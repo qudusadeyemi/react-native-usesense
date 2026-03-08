@@ -1,0 +1,53 @@
+buildscript {
+    ext.safeExtGet = {prop, fallback ->
+        rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+    }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace "com.usesense.reactnative"
+    compileSdkVersion safeExtGet('compileSdkVersion', 35)
+
+    defaultConfig {
+        minSdkVersion safeExtGet('minSdkVersion', 26)
+        targetSdkVersion safeExtGet('targetSdkVersion', 35)
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    google()
+}
+
+dependencies {
+    implementation "com.facebook.react:react-native:+"
+
+    // UseSense Android SDK
+    // Option 1: Published Maven artifact (production)
+    implementation "com.usesense:sdk:0.1.0"
+
+    // Option 2: Local Maven (~/.m2) — run `./gradlew :sdk:publishToMavenLocal`
+    //           in the usesense-android-sdk repo, then the line above resolves locally.
+
+    // Option 3: Source dependency — add this to your app's settings.gradle:
+    //   includeBuild('../usesense-android-sdk') {
+    //       dependencySubstitution {
+    //           substitute module('com.usesense:sdk') using project(':sdk')
+    //       }
+    //   }
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:${safeExtGet('kotlinVersion', '2.2.10')}"
+}

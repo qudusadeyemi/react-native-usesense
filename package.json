@@ -1,0 +1,42 @@
+{
+  "name": "react-native-usesense",
+  "version": "0.1.0",
+  "description": "React Native wrapper for the UseSense Android SDK — identity verification for mobile apps",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "react-native": "src/index.ts",
+  "source": "src/index.ts",
+  "files": [
+    "src",
+    "android",
+    "react-native-usesense.podspec",
+    "!android/build",
+    "!**/__tests__"
+  ],
+  "scripts": {
+    "typescript": "tsc --noEmit"
+  },
+  "keywords": [
+    "react-native",
+    "usesense",
+    "identity-verification",
+    "kyc",
+    "liveness"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qudusadeyemi/react-native-usesense.git"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-native": "^0.72.0",
+    "react": "^18.2.0",
+    "react-native": "^0.73.0",
+    "typescript": "^5.0.0"
+  }
+}

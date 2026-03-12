@@ -4,7 +4,7 @@
   "description": "React Native wrapper for the UseSense iOS & Android SDKs — identity verification, liveness detection, and deduplication for mobile apps",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
-  "types": "lib/typescript/src/index.d.ts",
+  "types": "lib/typescript/index.d.ts",
   "react-native": "src/index",
   "source": "src/index",
   "files": [

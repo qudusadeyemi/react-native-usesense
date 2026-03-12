@@ -1,14 +1,34 @@
-import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import {
+  NativeModules,
+  NativeEventEmitter,
+  Platform,
+} from 'react-native';
 
-const { UseSenseModule } = NativeModules;
+// ---------------------------------------------------------------------------
+// Dual-architecture module resolution
+// ---------------------------------------------------------------------------
+
+// Try TurboModule first (New Architecture), fall back to Bridge module.
+const isTurboModuleEnabled =
+  // @ts-expect-error — global.__turboModuleProxy is injected at runtime
+  global.__turboModuleProxy != null;
+
+const UseSenseModule: import('./NativeUseSense').Spec = isTurboModuleEnabled
+  ? require('./NativeUseSense').default
+  : NativeModules.UseSenseModule;
 
 if (!UseSenseModule) {
   throw new Error(
-    'react-native-usesense: NativeModule not found. Make sure you have linked the library correctly.',
+    '[react-native-usesense] NativeModule not found. ' +
+      'Make sure the library is linked correctly:\n' +
+      '  - iOS: run `cd ios && pod install`\n' +
+      '  - Android: rebuild with `npx react-native run-android`',
   );
 }
 
-// ─── Types ───────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Public Types
+// ---------------------------------------------------------------------------
 
 export type UseSenseEnvironment = 'sandbox' | 'production' | 'auto';
 
@@ -81,29 +101,66 @@ export interface UseSenseEvent {
   data?: Record<string, unknown>;
 }
 
-// ─── API ─────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
 
-const eventEmitter = new NativeEventEmitter(UseSenseModule);
+const eventEmitter = new NativeEventEmitter(UseSenseModule as any);
 
 /**
- * Initialize the UseSense SDK. Must be called before startVerification().
+ * Flatten the nested BrandingConfig into top-level keys expected by the
+ * native codegen spec (codegen does not support nested optional objects).
+ */
+function flattenConfig(config: UseSenseConfig) {
+  const { branding, ...rest } = config;
+  return {
+    ...rest,
+    primaryColor: branding?.primaryColor,
+    buttonRadius: branding?.buttonRadius,
+    logoUrl: branding?.logoUrl,
+    fontFamily: branding?.fontFamily,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Initialize the UseSense SDK. Must be called once before startVerification().
  */
 export function initialize(config: UseSenseConfig): void {
-  if (Platform.OS !== 'android') {
-    console.warn('react-native-usesense: Only Android is supported currently.');
-    return;
-  }
-  UseSenseModule.initialize(config);
+  UseSenseModule.initialize(flattenConfig(config));
 }
 
 /**
- * Launch the verification flow. Returns a promise that resolves with
- * the verification result or rejects with an error/cancellation.
+ * Launch the native verification flow.
+ *
+ * Returns a promise that resolves with the verification result, or rejects
+ * with a {@link UseSenseError}-shaped object on failure/cancellation.
  */
-export function startVerification(
+export async function startVerification(
   request: VerificationRequest,
 ): Promise<UseSenseResult> {
-  return UseSenseModule.startVerification(request);
+  const nativeRequest: Parameters<typeof UseSenseModule.startVerification>[0] = {
+    sessionType: request.sessionType,
+    externalUserId: request.externalUserId,
+    identityId: request.identityId,
+    metadata: request.metadata ? JSON.stringify(request.metadata) : undefined,
+  };
+
+  const result = await UseSenseModule.startVerification(nativeRequest);
+
+  return {
+    sessionId: result.sessionId,
+    sessionType: result.sessionType ?? null,
+    identityId: result.identityId ?? null,
+    decision: result.decision,
+    timestamp: result.timestamp,
+    isApproved: result.isApproved,
+    isRejected: result.isRejected,
+    isPendingReview: result.isPendingReview,
+  };
 }
 
 /**
@@ -136,12 +193,23 @@ export function reset(): void {
   UseSenseModule.reset();
 }
 
+/**
+ * Convenience constant exposing the current platform.
+ */
+export const platform: 'ios' | 'android' =
+  Platform.OS === 'ios' ? 'ios' : 'android';
+
+// ---------------------------------------------------------------------------
+// Default export
+// ---------------------------------------------------------------------------
+
 const UseSense = {
   initialize,
   startVerification,
   onEvent,
   isInitialized,
   reset,
+  platform,
 };
 
 export default UseSense;

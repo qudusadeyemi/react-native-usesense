@@ -1,16 +1,21 @@
 {
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "lib",
+    "outDir": "lib/typescript",
     "strict": true,
     "jsx": "react",
     "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
     "target": "esnext",
     "module": "esnext",
     "lib": ["esnext"],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "react-native-usesense": ["./src/index"]
+    }
   },
   "include": ["src"]
 }

@@ -1,5 +1,10 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "lib/src/generated/**"
+
 linter:
   rules:
     avoid_print: false

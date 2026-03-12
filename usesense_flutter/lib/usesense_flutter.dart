@@ -16,7 +16,7 @@
 ///   VerificationRequest(sessionType: SessionType.enrollment),
 /// );
 /// ```
-library usesense_flutter;
+library;
 
 export 'src/usesense_error.dart' show UseSenseError;
 export 'src/usesense_flutter_platform_interface.dart'

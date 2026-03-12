@@ -47,24 +47,20 @@ class UseSenseFlutter {
   /// upload progress, and the final decision. Subscribe before calling
   /// [startVerification] to receive all events.
   Stream<UseSenseEvent> get onEvent {
-    if (_eventController == null) {
-      _eventController = StreamController<UseSenseEvent>.broadcast(
-        onListen: _startListeningEvents,
-        onCancel: _stopListeningEvents,
-      );
-    }
+    _eventController ??= StreamController<UseSenseEvent>.broadcast(
+      onListen: _startListeningEvents,
+      onCancel: _stopListeningEvents,
+    );
     return _eventController!.stream;
   }
 
   /// A broadcast stream that emits when the user cancels the verification
   /// session.
   Stream<void> get onCancelled {
-    if (_cancelledController == null) {
-      _cancelledController = StreamController<void>.broadcast(
-        onListen: _startListeningCancelled,
-        onCancel: _stopListeningCancelled,
-      );
-    }
+    _cancelledController ??= StreamController<void>.broadcast(
+      onListen: _startListeningCancelled,
+      onCancel: _stopListeningCancelled,
+    );
     return _cancelledController!.stream;
   }
 

@@ -19,7 +19,7 @@ class UseSenseError implements Exception {
   factory UseSenseError.fromPlatformException(Object exception) {
     if (exception is UseSenseError) return exception;
     return UseSenseError(
-      code: _codeFromString(exception.toString()),
+      code: codeFromString(exception.toString()),
       message: exception.toString(),
     );
   }
@@ -80,7 +80,8 @@ class UseSenseError implements Exception {
   /// Additional error details.
   final Map<String, String>? details;
 
-  static int _codeFromString(String code) {
+  /// Converts a string error code from the native platform to a numeric code.
+  static int codeFromString(String code) {
     switch (code) {
       case 'camera_unavailable':
         return cameraUnavailable;

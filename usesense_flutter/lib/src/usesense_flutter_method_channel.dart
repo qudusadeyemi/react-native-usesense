@@ -180,7 +180,7 @@ class MethodChannelUseSenseFlutter extends UseSenseFlutterPlatform
 
   UseSenseError _wrapError(PlatformException e) {
     return UseSenseError(
-      code: UseSenseError._codeFromString(e.code),
+      code: UseSenseError.codeFromString(e.code),
       message: e.message ?? 'An unknown error occurred.',
       isRetryable: _isRetryableCode(e.code),
       details: e.details is Map

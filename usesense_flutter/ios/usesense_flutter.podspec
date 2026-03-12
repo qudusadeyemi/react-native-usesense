@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   s.dependency 'Flutter'
   s.dependency 'UseSenseSDK', '~> 0.1.0'
 
-  s.platform         = :ios, '15.0'
+  s.platform         = :ios, '16.0'
   s.swift_version    = '5.9'
 
   # Flutter.framework does not contain a i386 slice.

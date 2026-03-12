@@ -10,7 +10,8 @@ public class UseSenseFlutterPlugin: NSObject, FlutterPlugin, UseSenseHostApi {
 
     private var flutterApi: UseSenseFlutterApiImpl?
     private var eventUnsubscribe: (() -> Void)?
-    private var client: UseSenseClient?
+    private var client: UseSense?
+    private var nativeConfig: UseSenseConfig?
 
     // MARK: - FlutterPlugin
 
@@ -23,55 +24,45 @@ public class UseSenseFlutterPlugin: NSObject, FlutterPlugin, UseSenseHostApi {
     // MARK: - UseSenseHostApi
 
     func initialize(config: PigeonUseSenseConfig, completion: @escaping (Result<Void, Error>) -> Void) {
-        do {
-            let environment: UseSenseEnvironment
-            switch config.environment {
-            case .sandbox:
-                environment = .sandbox
-            case .production:
-                environment = .production
-            case .auto:
-                environment = .auto
-            }
-
-            var brandingConfig: BrandingConfig? = nil
-            if let b = config.branding {
-                brandingConfig = BrandingConfig(
-                    displayName: b.displayName,
-                    logoUrl: b.logoUrl,
-                    primaryColor: b.primaryColor,
-                    redirectUrl: b.redirectUrl,
-                    buttonRadius: b.buttonRadius.map { Int($0) } ?? 12,
-                    fontFamily: b.fontFamily
-                )
-            }
-
-            let nativeConfig = UseSenseConfig(
-                apiKey: config.apiKey,
-                environment: environment,
-                baseUrl: config.baseUrl,
-                gatewayKey: config.gatewayKey,
-                branding: brandingConfig
-            )
-
-            client = UseSense.initialize(config: nativeConfig)
-
-            // Subscribe to native events and forward to Dart.
-            eventUnsubscribe?.self()
-            eventUnsubscribe = client?.onEvent { [weak self] event in
-                DispatchQueue.main.async {
-                    self?.forwardEvent(event)
-                }
-            }
-
-            completion(.success(()))
-        } catch {
-            completion(.failure(PigeonError(
-                code: "invalid_config",
-                message: error.localizedDescription,
-                details: nil
-            )))
+        let environment: Environment
+        switch config.environment {
+        case .sandbox:
+            environment = .sandbox
+        case .production:
+            environment = .production
+        case .auto:
+            environment = .auto
         }
+
+        var brandingConfig: BrandingConfig? = nil
+        if let b = config.branding {
+            brandingConfig = BrandingConfig(
+                logoUrl: b.logoUrl,
+                primaryColor: b.primaryColor ?? "#4F63F5",
+                buttonRadius: CGFloat(b.buttonRadius ?? 12),
+                fontFamily: b.fontFamily
+            )
+        }
+
+        let sdkConfig = UseSenseConfig(
+            apiKey: config.apiKey,
+            gatewayKey: config.gatewayKey ?? UseSenseConfig.defaultGatewayKey,
+            environment: environment,
+            branding: brandingConfig
+        )
+
+        nativeConfig = sdkConfig
+        client = UseSense(config: sdkConfig)
+
+        // Subscribe to native events and forward to Dart.
+        eventUnsubscribe?()
+        eventUnsubscribe = client?.onEvent { [weak self] event in
+            DispatchQueue.main.async {
+                self?.forwardEvent(event)
+            }
+        }
+
+        completion(.success(()))
     }
 
     func startVerification(request: PigeonVerificationRequest, completion: @escaping (Result<PigeonUseSenseResult, Error>) -> Void) {
@@ -110,20 +101,22 @@ public class UseSenseFlutterPlugin: NSObject, FlutterPlugin, UseSenseHostApi {
 
         let session = client.startVerification(request: nativeRequest)
 
-        session.present(from: rootVC) { [weak self] result in
+        // Present the SDK's camera UI as a full-screen modal.
+        let vc = UseSenseViewController(session: session) { [weak self] result in
             DispatchQueue.main.async {
+                rootVC.dismiss(animated: true)
                 switch result {
-                case .success(let useSenseResult):
+                case .success(let decision):
                     let pigeonResult = PigeonUseSenseResult(
-                        sessionId: useSenseResult.sessionId,
-                        sessionType: useSenseResult.sessionType,
-                        identityId: useSenseResult.identityId,
-                        decision: useSenseResult.decision,
-                        timestamp: useSenseResult.timestamp
+                        sessionId: decision.sessionId,
+                        sessionType: decision.sessionType,
+                        identityId: decision.identityId,
+                        decision: decision.decision,
+                        timestamp: decision.timestamp
                     )
                     completion(.success(pigeonResult))
                 case .failure(let error):
-                    if case .cancelled = error as? UseSenseSessionError {
+                    if error.code == .userCancelled {
                         self?.flutterApi?.onCancelled { _ in }
                         completion(.failure(PigeonError(
                             code: "session_cancelled",
@@ -140,10 +133,13 @@ public class UseSenseFlutterPlugin: NSObject, FlutterPlugin, UseSenseHostApi {
                 }
             }
         }
+
+        vc.modalPresentationStyle = .fullScreen
+        rootVC.present(vc, animated: true)
     }
 
     func startRemoteEnrollment(remoteEnrollmentId: String, completion: @escaping (Result<PigeonUseSenseResult, Error>) -> Void) {
-        guard let client = client else {
+        guard let nativeConfig = nativeConfig else {
             completion(.failure(PigeonError(
                 code: "sdk_not_initialized",
                 message: "UseSense SDK is not initialized. Call initialize() first.",
@@ -161,16 +157,21 @@ public class UseSenseFlutterPlugin: NSObject, FlutterPlugin, UseSenseHostApi {
             return
         }
 
-        client.startRemoteEnrollment(enrollmentId: remoteEnrollmentId, from: rootVC) { [weak self] result in
+        let vc = HostedEnrollmentViewController(
+            enrollmentId: remoteEnrollmentId,
+            config: nativeConfig
+        ) { [weak self] result in
             DispatchQueue.main.async {
+                rootVC.dismiss(animated: true)
                 switch result {
-                case .success(let useSenseResult):
+                case .success(let decision):
+                    // HostedEnrollmentViewController returns a decision string.
                     completion(.success(PigeonUseSenseResult(
-                        sessionId: useSenseResult.sessionId,
-                        sessionType: useSenseResult.sessionType,
-                        identityId: useSenseResult.identityId,
-                        decision: useSenseResult.decision,
-                        timestamp: useSenseResult.timestamp
+                        sessionId: remoteEnrollmentId,
+                        sessionType: "enrollment",
+                        identityId: nil,
+                        decision: decision,
+                        timestamp: ISO8601DateFormatter().string(from: Date())
                     )))
                 case .failure(let error):
                     completion(.failure(self?.mapError(error) ?? PigeonError(
@@ -181,10 +182,13 @@ public class UseSenseFlutterPlugin: NSObject, FlutterPlugin, UseSenseHostApi {
                 }
             }
         }
+
+        vc.modalPresentationStyle = .fullScreen
+        rootVC.present(vc, animated: true)
     }
 
     func startRemoteVerification(remoteSessionId: String, completion: @escaping (Result<PigeonUseSenseResult, Error>) -> Void) {
-        guard let client = client else {
+        guard let nativeConfig = nativeConfig else {
             completion(.failure(PigeonError(
                 code: "sdk_not_initialized",
                 message: "UseSense SDK is not initialized. Call initialize() first.",
@@ -202,16 +206,20 @@ public class UseSenseFlutterPlugin: NSObject, FlutterPlugin, UseSenseHostApi {
             return
         }
 
-        client.startRemoteVerification(sessionId: remoteSessionId, from: rootVC) { [weak self] result in
+        let vc = HostedVerificationViewController(
+            remoteSessionId: remoteSessionId,
+            config: nativeConfig
+        ) { [weak self] result in
             DispatchQueue.main.async {
+                rootVC.dismiss(animated: true)
                 switch result {
-                case .success(let useSenseResult):
+                case .success(let decision):
                     completion(.success(PigeonUseSenseResult(
-                        sessionId: useSenseResult.sessionId,
-                        sessionType: useSenseResult.sessionType,
-                        identityId: useSenseResult.identityId,
-                        decision: useSenseResult.decision,
-                        timestamp: useSenseResult.timestamp
+                        sessionId: remoteSessionId,
+                        sessionType: "authentication",
+                        identityId: nil,
+                        decision: decision,
+                        timestamp: ISO8601DateFormatter().string(from: Date())
                     )))
                 case .failure(let error):
                     completion(.failure(self?.mapError(error) ?? PigeonError(
@@ -222,6 +230,9 @@ public class UseSenseFlutterPlugin: NSObject, FlutterPlugin, UseSenseHostApi {
                 }
             }
         }
+
+        vc.modalPresentationStyle = .fullScreen
+        rootVC.present(vc, animated: true)
     }
 
     func isInitialized() throws -> Bool {
@@ -233,6 +244,7 @@ public class UseSenseFlutterPlugin: NSObject, FlutterPlugin, UseSenseHostApi {
         eventUnsubscribe = nil
         client?.reset()
         client = nil
+        nativeConfig = nil
     }
 
     // MARK: - Private helpers
@@ -261,50 +273,45 @@ public class UseSenseFlutterPlugin: NSObject, FlutterPlugin, UseSenseHostApi {
         @unknown default: pigeonType = .error
         }
 
-        // Convert data values to platform-channel-safe types.
-        let safeData: [String: Any?]? = event.data?.mapValues { value in
-            switch value {
-            case let s as String: return s
-            case let i as Int: return i
-            case let d as Double: return d
-            case let b as Bool: return b
-            case nil: return nil
-            default: return "\(value)"
-            }
-        }
+        // iOS SDK event.data is [String: String]?, already safe for platform channels.
+        let safeData: [String: Any?]? = event.data?.mapValues { $0 as Any? }
 
         let pigeonEvent = PigeonUseSenseEvent(
             type: pigeonType,
-            timestamp: Int64(event.timestamp),
+            timestamp: Int64(event.timestamp.timeIntervalSince1970 * 1000),
             data: safeData
         )
         flutterApi?.onEvent(event: pigeonEvent) { _ in }
     }
 
-    private func mapError(_ error: Error) -> PigeonError {
-        if let sdkError = error as? UseSenseError {
-            let code: String
-            switch sdkError.code {
-            case 1001: code = "camera_unavailable"
-            case 1002: code = "camera_permission_denied"
-            case 1003: code = "microphone_permission_denied"
-            case 2001: code = "network_error"
-            case 2002: code = "network_timeout"
-            case 3001: code = "session_expired"
-            case 3002: code = "upload_failed"
-            case 4001: code = "capture_failed"
-            case 4002: code = "encoding_failed"
-            case 5001: code = "invalid_config"
-            case 6001: code = "quota_exceeded"
-            default: code = "sdk_error"
-            }
-            return PigeonError(code: code, message: sdkError.message, details: nil)
+    private func mapError(_ error: UseSenseError) -> PigeonError {
+        let code: String
+        switch error.code {
+        case .cameraUnavailable: code = "camera_unavailable"
+        case .cameraPermissionDenied: code = "camera_permission_denied"
+        case .micPermissionDenied: code = "microphone_permission_denied"
+        case .networkError: code = "network_error"
+        case .networkTimeout: code = "network_timeout"
+        case .sessionExpired: code = "session_expired"
+        case .uploadFailed: code = "upload_failed"
+        case .captureFailed: code = "capture_failed"
+        case .encodingFailed: code = "encoding_failed"
+        case .invalidConfig: code = "invalid_config"
+        case .quotaExceeded: code = "quota_exceeded"
+        case .userCancelled: code = "session_cancelled"
+        case .unauthorized: code = "unauthorized"
+        case .invalidToken: code = "invalid_token"
+        case .sessionNotFound: code = "session_not_found"
+        case .identityNotFound: code = "identity_not_found"
+        case .invalidRequest: code = "invalid_request"
+        case .faceNotDetected: code = "face_not_detected"
+        case .lowLight: code = "low_light"
+        case .timeout: code = "session_timeout"
+        case .serverError: code = "server_error"
+        case .serviceUnavailable: code = "service_unavailable"
+        case .unknownError: code = "sdk_error"
+        @unknown default: code = "sdk_error"
         }
-        return PigeonError(code: "sdk_error", message: error.localizedDescription, details: nil)
+        return PigeonError(code: code, message: error.message, details: error.details)
     }
-}
-
-/// Enum matching the iOS SDK's session error type for cancellation detection.
-enum UseSenseSessionError: Error {
-    case cancelled
 }

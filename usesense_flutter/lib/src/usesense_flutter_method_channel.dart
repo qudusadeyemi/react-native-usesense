@@ -47,7 +47,8 @@ class MethodChannelUseSenseFlutter extends UseSenseFlutterPlatform
 
   @override
   Future<UseSenseResult> startRemoteEnrollment(
-      String remoteEnrollmentId) async {
+    String remoteEnrollmentId,
+  ) async {
     try {
       final result =
           await _hostApi.startRemoteEnrollment(remoteEnrollmentId);
@@ -59,7 +60,8 @@ class MethodChannelUseSenseFlutter extends UseSenseFlutterPlatform
 
   @override
   Future<UseSenseResult> startRemoteVerification(
-      String remoteSessionId) async {
+    String remoteSessionId,
+  ) async {
     try {
       final result =
           await _hostApi.startRemoteVerification(remoteSessionId);

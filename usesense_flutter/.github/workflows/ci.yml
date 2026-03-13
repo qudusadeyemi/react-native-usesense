@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.16.0"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Validate Pigeon codegen is up to date
+        run: |
+          dart run pigeon --input pigeons/usesense_api.dart
+          if [ -n "$(git diff --name-only)" ]; then
+            echo "Pigeon codegen is out of date. Run 'dart run pigeon --input pigeons/usesense_api.dart' and commit the changes."
+            git diff
+            exit 1
+          fi
+
+      - name: Build example app (Android)
+        run: |
+          cd example
+          flutter build apk --debug

@@ -3,7 +3,7 @@ description: Demonstrates the UseSense Flutter plugin.
 publish_to: none
 
 environment:
-  sdk: ^3.5.0
+  sdk: ">=3.2.0 <4.0.0"
 
 dependencies:
   flutter:

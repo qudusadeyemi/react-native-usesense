@@ -11,3 +11,11 @@ pubspec.lock
 
 # macOS
 .DS_Store
+
+# iOS
+example/ios/Pods/
+example/ios/.symlinks/
+
+# Android
+example/android/.gradle/
+example/android/build/

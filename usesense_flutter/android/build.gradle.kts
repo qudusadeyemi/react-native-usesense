@@ -4,14 +4,14 @@ plugins {
 }
 
 group = "com.usesense.flutter"
-version = "0.1.0"
+version = "1.0.0"
 
 android {
     namespace = "com.usesense.flutter"
     compileSdk = 35
 
     defaultConfig {
-        minSdk = 26
+        minSdk = 24
     }
 
     compileOptions {
@@ -26,14 +26,7 @@ android {
 
 dependencies {
     // UseSense Android SDK
-    // Option 1: Published Maven artifact
-    implementation("com.usesense:sdk:0.1.0")
-
-    // Option 2: Local Maven repository (uncomment if using local build)
-    // implementation("com.usesense:sdk:0.1.0-local")
-
-    // Option 3: Source dependency (uncomment and adjust path)
-    // implementation(project(":usesense-sdk"))
+    implementation("ai.usesense:sdk:1.0.0")
 
     // Flutter embedding (provided by the Flutter build system)
     compileOnly("io.flutter:flutter_embedding_debug:1.0.0-")

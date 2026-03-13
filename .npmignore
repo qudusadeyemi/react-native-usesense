@@ -1,0 +1,15 @@
+example/
+.github/
+*.test.ts
+*.test.tsx
+__tests__/
+.vscode/
+.idea/
+.git/
+tsconfig.build.json
+CONTRIBUTING.md
+SECURITY.md
+INTEGRATION_GUIDE.md
+.eslintrc*
+.prettierrc*
+jest.config.*

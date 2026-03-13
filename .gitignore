@@ -1,8 +1,40 @@
+# Dependencies
 node_modules/
+
+# Build output
 /lib/
+
+# Android
 android/build/
 .gradle/
 *.iml
-.idea/
-.DS_Store
 local.properties
+
+# iOS
+ios/build/
+ios/Pods/
+*.xcworkspace
+*.xcuserdata
+
+# Example app
+example/ios/Pods/
+example/android/.gradle/
+example/android/build/
+example/android/app/build/
+example/node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# npm
+*.tgz
+
+# Turborepo
+.turbo/

@@ -16,7 +16,7 @@ jobs:
           node-version: 18
           cache: npm
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm run build
       - run: npm run typecheck
       - run: npm run lint
@@ -33,11 +33,11 @@ jobs:
           node-version: 18
           cache: npm
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
 
       - name: Install example dependencies
         working-directory: example
-        run: npm ci
+        run: npm install
 
       - name: Install CocoaPods
         working-directory: example/ios
@@ -70,11 +70,11 @@ jobs:
           distribution: zulu
           java-version: 17
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
 
       - name: Install example dependencies
         working-directory: example
-        run: npm ci
+        run: npm install
 
       - name: Build Android
         working-directory: example/android

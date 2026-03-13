@@ -25,7 +25,7 @@
     "build": "bob build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "prepare": "bob build",
     "clean": "del-cli lib"
   },
@@ -61,6 +61,8 @@
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
     "del-cli": "^5.1.0",
     "eslint": "^8.57.0",
     "jest": "^29.7.0",

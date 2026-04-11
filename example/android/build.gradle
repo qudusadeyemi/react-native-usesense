@@ -10,13 +10,18 @@ buildscript {
         compileSdkVersion = 34
         targetSdkVersion = 34
         ndkVersion = "25.1.8937393"
-        // Bumped from the RN template default of 1.8.0 to match the
-        // native SDK's Kotlin version (2.2.10 per its root
-        // build.gradle.kts). Keeping the example on Kotlin 1.8 while
-        // consuming a library built with Kotlin 2.2 produces a
-        // "metadata version not compatible" warning and can break
-        // ktlint + kapt pipelines.
-        kotlinVersion = "2.2.10"
+        // Pinned to the RN 0.73 template default of 1.8.0. The
+        // `@react-native/gradle-plugin` shipped with RN 0.73 hardcodes
+        // its own Kotlin compiler at 1.8.0 and ignores `ext.kotlinVersion`,
+        // so bumping this to match the UseSense SDK's 2.2.x produces a
+        // 1.8 compiler reading a 2.2 stdlib — a fatal metadata version
+        // mismatch that breaks `react-native-safe-area-context` and
+        // every other transitively-compiled Kotlin dep. The UseSense
+        // AAR compiled against Kotlin 2.2 is binary-compatible with a
+        // 1.8 consumer (Kotlin's stdlib promises this), so the right
+        // fix is to keep compiler + stdlib in sync on 1.8 and tolerate
+        // a non-fatal metadata warning on the UseSense class files.
+        kotlinVersion = "1.8.0"
     }
     repositories {
         google()

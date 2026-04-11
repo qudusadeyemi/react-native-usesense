@@ -1,0 +1,8 @@
+# CODEOWNERS for the UseSense React Native plugin.
+#
+# The owner on every line is auto-requested as a reviewer on any PR
+# that modifies files matching the pattern.
+#
+# Syntax: https://docs.github.com/en/repositories/managing-your-repositories-settings-and-security/customizing-your-repository/about-code-owners
+
+* @qudusadeyemi

@@ -11,7 +11,9 @@ Pod::Spec.new do |s|
   s.authors      = { "UseSense Technologies Ltd." => "support@usesense.ai" }
   s.source       = { :git => package["repository"]["url"], :tag => "v#{s.version}" }
 
-  s.platforms    = { :ios => "14.0" }
+  # Minimum iOS 15.0 to match the native UseSense iOS SDK's floor
+  # (v4.x uses SwiftUI features that require iOS 15.0 and up).
+  s.platforms    = { :ios => "15.0" }
   s.swift_version = "5.9"
 
   s.source_files = "ios/**/*.{swift,h,m}"
@@ -19,6 +21,10 @@ Pod::Spec.new do |s|
   # React Native dependency (supports both old and new architecture)
   install_modules_dependencies(s)
 
-  # Native UseSense iOS SDK
-  s.dependency "UseSenseSDK", "~> 1.0"
+  # Native UseSense iOS SDK. Minimum 4.2.2 — earlier 4.x releases had
+  # terminal-screen centering bugs, and the 1.x series used a pre-
+  # redaction result type with a completely different UseSenseConfig
+  # init signature. See CHANGELOG [2.0.0] for the full rewrite
+  # rationale.
+  s.dependency "UseSenseSDK", "~> 4.2"
 end

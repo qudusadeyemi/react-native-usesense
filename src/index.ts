@@ -1,250 +1,308 @@
-import { NativeModules, NativeEventEmitter } from 'react-native';
+import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 
-const { UseSenseModule } = NativeModules;
+const LINKING_ERROR =
+  `react-native-usesense: the native module could not be found.\n\n` +
+  Platform.select({
+    ios: `iOS: run \`cd ios && pod install\` and rebuild the app.`,
+    android: `Android: rebuild the app after installing the package.`,
+    default: '',
+  }) +
+  `\n\nIf you're using Expo, the plugin must be consumed through a development build; it does not support Expo Go because it wraps a native camera SDK.`;
+
+const UseSenseModule = NativeModules.UseSenseModule;
 
 if (!UseSenseModule) {
-  throw new Error(
-    'react-native-usesense: NativeModule not found. Make sure you have linked the library correctly.\n' +
-      'iOS: Run `cd ios && pod install`\n' +
-      'Android: Rebuild the app after installing the package.',
-  );
+  throw new Error(LINKING_ERROR);
 }
 
-// ─── Types ───────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────
 
-/** Environment for the UseSense API. */
-export type UseSenseEnvironment = 'production' | 'sandbox';
+/**
+ * Target environment for the UseSense API. `auto` asks the native SDK
+ * to detect from the API key prefix (`sk_sandbox_*` → sandbox,
+ * `sk_prod_*` → production).
+ */
+export type UseSenseEnvironment = 'sandbox' | 'production' | 'auto';
 
-/** Session type for verification. */
+/** Type of verification session. */
 export type SessionType = 'enrollment' | 'authentication';
 
-/** Challenge policy controlling verification difficulty. */
-export type ChallengePolicy = 'standard' | 'enhanced' | 'adaptive';
-
-/** Decision returned by the verification engine. */
-export type UseSenseDecision = 'approved' | 'rejected' | 'manual_review';
-
-/** Processing stage during server-side analysis. */
-export type ProcessingStage = 'deepsense' | 'livesense' | 'matchsense' | 'fusion';
+/**
+ * Decision returned by the native SDK.
+ *
+ * These values come straight from the server's verdict and are
+ * exposed to the integrator for UI feedback only. The definitive
+ * verdict arrives at your backend via an HMAC-signed webhook; never
+ * trust the client-side decision for access-control.
+ */
+export type Decision = 'APPROVE' | 'REJECT' | 'MANUAL_REVIEW';
 
 /**
- * Configuration for initializing the UseSense plugin.
+ * Branding overrides applied to the native camera UI.
  *
- * @example
- * ```ts
- * await UseSense.initialize({
- *   apiKey: 'your_api_key',
- *   environment: 'sandbox',
- * });
- * ```
+ * - `logoUrl`, `primaryColor`, `buttonRadius`, `fontFamily` are
+ *   honoured on both iOS and Android.
+ * - `displayName`, `redirectUrl` are Android-only fields. They're
+ *   accepted on iOS for cross-platform API parity but ignored.
+ */
+export interface BrandingConfig {
+  logoUrl?: string;
+  primaryColor?: string;
+  buttonRadius?: number;
+  fontFamily?: string;
+  displayName?: string;
+  redirectUrl?: string;
+}
+
+/**
+ * Configuration for `UseSense.initialize`. The minimum required
+ * field is the API key; every other field has a sensible default.
  */
 export interface UseSenseConfig {
-  /** API key from the UseSense dashboard. */
+  /** API key from watchtower.usesense.ai. */
   apiKey: string;
-  /** Target environment. Defaults to `'sandbox'`. */
+  /** Target environment. Defaults to `auto` (detected from key prefix). */
   environment?: UseSenseEnvironment;
-  /** Your organization ID (optional, inferred from API key). */
-  organizationId?: string;
-  /** Default session type. Defaults to `'enrollment'`. */
-  sessionType?: SessionType;
-  /** Identity ID for authentication sessions. */
-  identityId?: string;
-  /** Challenge difficulty policy. Defaults to `'standard'`. */
-  challengePolicy?: ChallengePolicy;
-  /** Enable audio capture for voice deepfake detection. Defaults to `false`. */
-  enableAudio?: boolean;
-  /** Maximum session duration in milliseconds. Defaults to `60000`. */
-  timeout?: number;
-  /** Custom key-value pairs attached to the session. */
-  metadata?: Record<string, string>;
+  /**
+   * Override the API endpoint. Defaults to `https://api.usesense.ai/v1`.
+   * Only set this if you're pointing at a staging or self-hosted
+   * proxy. Maps to `apiEndpoint` on iOS and `baseUrl` on Android
+   * under the hood.
+   */
+  apiEndpoint?: string;
+  /** SDK-level branding overrides. */
+  branding?: BrandingConfig;
 }
 
 /**
- * Result returned when a verification session completes.
+ * Request to start a verification session.
+ */
+export interface VerificationRequest {
+  sessionType: SessionType;
+  /** Your internal user identifier (optional, stored in session metadata). */
+  externalUserId?: string;
+  /**
+   * Required for `authentication` sessions. The previously-enrolled
+   * identity you're verifying against.
+   */
+  identityId?: string;
+  /** Custom key-value pairs attached to the session. */
+  metadata?: Record<string, string | number | boolean>;
+}
+
+/**
+ * Redacted decision object returned when a session completes.
  *
- * **Important:** This result is for UI feedback only.
- * The definitive verdict arrives at your backend via HMAC-signed webhook.
+ * This is the ONLY shape the plugin exposes to React Native. Pillar
+ * scores (channel trust, liveness, matchsense risk) are intentionally
+ * not included — the native SDKs strip those fields before returning
+ * across the bridge to prevent reverse-engineering of the server-side
+ * scoring logic. If you need full scoring details, consume the signed
+ * webhook delivered to your backend.
  */
 export interface UseSenseResult {
-  /** Unique session identifier. */
   sessionId: string;
-  /** Verification decision. */
-  decision: UseSenseDecision;
-  /** DeepSense channel trust score (0-100). */
-  channelTrustScore: number;
-  /** LiveSense liveness score (0-100). */
-  livenessScore: number;
-  /** MatchSense risk score (0-100). Lower is better. */
-  matchSenseRiskScore: number;
-  /** Fused presence confidence score (0-100). */
-  presenceConfidence: number;
-  /** Reasons contributing to the decision. */
-  reasons: string[];
-  /** Rule that triggered the decision, if any. */
-  ruleTriggered?: string;
-  /** Recommended action for the integrator. */
-  recommendedAction?: string;
-  /** Cryptographic signature for result verification. */
-  sessionSignature: string;
+  sessionType: string | null;
+  identityId: string | null;
+  decision: Decision;
+  timestamp: string;
+  /** Convenience: `decision === 'APPROVE'`. */
+  isApproved: boolean;
+  /** Convenience: `decision === 'REJECT'`. */
+  isRejected: boolean;
+  /** Convenience: `decision === 'MANUAL_REVIEW'`. */
+  isPendingReview: boolean;
 }
 
 /**
- * Error returned when a verification session fails.
+ * Error thrown when a verification session fails.
+ *
+ * Matches the native SDKs' error shape: machine-readable code,
+ * human-readable message, retry hint.
  */
 export interface UseSenseError {
-  /** Machine-readable error code. */
+  /**
+   * Machine-readable error code. One of
+   * `CAMERA_UNAVAILABLE`, `CAMERA_PERMISSION_DENIED`,
+   * `MIC_PERMISSION_DENIED`, `NETWORK_ERROR`, `NETWORK_TIMEOUT`,
+   * `SESSION_EXPIRED`, `UNAUTHORIZED`, `INVALID_TOKEN`,
+   * `SESSION_NOT_FOUND`, `IDENTITY_NOT_FOUND`, `INVALID_REQUEST`,
+   * `INVALID_CONFIG`, `QUOTA_EXCEEDED`, `USER_CANCELLED`,
+   * `session_cancelled`, `sdk_not_initialized`, `no_view_controller`,
+   * `CAPTURE_FAILED`, `ENCODING_FAILED`, `UPLOAD_FAILED`,
+   * `FACE_NOT_DETECTED`, `LOW_LIGHT`, `TIMEOUT`, `SERVER_ERROR`,
+   * `SERVICE_UNAVAILABLE`, `TOKEN_EXPIRED`, `TOKEN_ALREADY_USED`,
+   * `INSUFFICIENT_CREDITS`, `NONCE_MISMATCH`, `UNKNOWN_ERROR`.
+   */
   code: string;
   /** Human-readable error message. */
   message: string;
-  /** Additional error details. */
-  details?: Record<string, any>;
+  /** Whether the operation can be retried. */
+  isRetryable?: boolean;
+  /** Server-specific error code, if any. */
+  serverCode?: string;
 }
 
 /**
- * Events emitted during the verification session lifecycle.
+ * Lifecycle event types emitted by the native SDK during a
+ * verification session.
  */
-export type UseSenseEvent =
-  | { type: 'session_started'; sessionId: string }
-  | { type: 'challenge_presented'; challengeType: string }
-  | { type: 'challenge_completed'; challengeType: string }
-  | { type: 'processing'; stage: ProcessingStage }
-  | { type: 'session_completed'; result: UseSenseResult }
-  | { type: 'session_error'; error: UseSenseError };
+export type UseSenseEventType =
+  | 'SESSION_CREATED'
+  | 'PERMISSIONS_REQUESTED'
+  | 'PERMISSIONS_GRANTED'
+  | 'PERMISSIONS_DENIED'
+  | 'CAPTURE_STARTED'
+  | 'FRAME_CAPTURED'
+  | 'CAPTURE_COMPLETED'
+  | 'AUDIO_RECORD_STARTED'
+  | 'AUDIO_RECORD_COMPLETED'
+  | 'CHALLENGE_STARTED'
+  | 'CHALLENGE_COMPLETED'
+  | 'UPLOAD_STARTED'
+  | 'UPLOAD_PROGRESS'
+  | 'UPLOAD_COMPLETED'
+  | 'COMPLETE_STARTED'
+  | 'DECISION_RECEIVED'
+  | 'IMAGE_QUALITY_CHECK'
+  | 'ERROR'
+  | 'UNKNOWN';
 
-/** Options for starting a verification session. */
-export interface StartSessionOptions {
-  /** Session type. Overrides the value set in {@link UseSenseConfig}. */
-  sessionType?: SessionType;
-  /** Identity ID for authentication sessions. */
-  identityId?: string;
+/** Single event emitted during a session. */
+export interface UseSenseEvent {
+  type: UseSenseEventType;
+  /** Unix epoch milliseconds. */
+  timestamp: number;
+  /** Event-specific payload. Opaque strings; never contains scoring data. */
+  data?: Record<string, string>;
 }
 
-/** Status of a verification session. */
-export interface SessionStatus {
-  /** Current session status. */
-  status: string;
-  /** Result, if the session has completed. */
-  result?: UseSenseResult;
-}
-
-/** Subscription handle returned by {@link UseSense.addListener}. */
+/** Handle returned by `UseSense.addListener`. */
 export interface UseSenseSubscription {
-  /** Remove the event listener. */
-  remove: () => void;
+  remove(): void;
 }
 
-// ─── Implementation ──────────────────────────────────────────────────
+// ─── Implementation ──────────────────────────────────────────────────────
 
 const eventEmitter = new NativeEventEmitter(UseSenseModule);
 
 /**
  * UseSense React Native plugin.
  *
- * Provides human presence verification by wrapping the native UseSense
- * iOS and Android SDKs into a single cross-platform API.
+ * Human presence verification wrapping the native iOS and Android
+ * UseSense SDKs. Every session runs inside a full-screen native
+ * camera activity; the plugin is a thin bridge that forwards
+ * initialization, verification requests, and lifecycle events to
+ * the platform SDK and returns a redacted decision object.
  *
  * @example
  * ```ts
  * import { UseSense } from 'react-native-usesense';
  *
- * await UseSense.initialize({ apiKey: 'your_key', environment: 'sandbox' });
- * const result = await UseSense.startSession({ sessionType: 'enrollment' });
- * console.log(result.decision);
+ * await UseSense.initialize({
+ *   apiKey: 'sk_sandbox_...',
+ *   environment: 'sandbox',
+ * });
+ *
+ * const unsubscribe = UseSense.addListener((event) => {
+ *   console.log(event.type, event.data);
+ * });
+ *
+ * try {
+ *   const result = await UseSense.startVerification({
+ *     sessionType: 'enrollment',
+ *   });
+ *   console.log(result.decision); // 'APPROVE' | 'REJECT' | 'MANUAL_REVIEW'
+ * } finally {
+ *   unsubscribe.remove();
+ * }
  * ```
  */
 export class UseSense {
   /**
-   * Initialize the UseSense plugin. Must be called once before any other method.
+   * Initialize the UseSense plugin. Must be called before any other
+   * method. Calling again with a different API key or environment
+   * replaces the previous configuration.
    *
-   * @param config - Plugin configuration including API key and environment.
-   * @throws {UseSenseError} If the API key is invalid or configuration is malformed.
+   * @throws {UseSenseError} If the API key is empty or initialization
+   * fails on the native side.
    */
   static async initialize(config: UseSenseConfig): Promise<void> {
     if (!config.apiKey) {
-      throw { code: 'invalid_config', message: 'apiKey is required' } as UseSenseError;
+      const err: UseSenseError = {
+        code: 'invalid_config',
+        message: 'apiKey is required',
+        isRetryable: false,
+      };
+      throw err;
     }
     return UseSenseModule.initialize({
       apiKey: config.apiKey,
-      environment: config.environment ?? 'sandbox',
-      organizationId: config.organizationId,
-      sessionType: config.sessionType ?? 'enrollment',
-      identityId: config.identityId,
-      challengePolicy: config.challengePolicy ?? 'standard',
-      enableAudio: config.enableAudio ?? false,
-      timeout: config.timeout ?? 60000,
-      metadata: config.metadata,
+      environment: config.environment ?? 'auto',
+      apiEndpoint: config.apiEndpoint,
+      branding: config.branding,
     });
   }
 
   /**
-   * Start a verification session. Presents a full-screen native camera UI.
-   *
-   * The returned promise resolves when the session completes and the modal
-   * dismisses, or rejects if an error occurs.
-   *
-   * @param options - Optional overrides for session type and identity ID.
-   * @returns The verification result (for UI feedback only).
-   * @throws {UseSenseError} On failure or cancellation.
+   * Start a verification session. Presents a full-screen native
+   * camera activity. The returned promise resolves when the session
+   * completes or rejects with a `UseSenseError` (including the
+   * `USER_CANCELLED` / `session_cancelled` cases when the user
+   * dismisses the camera screen).
    */
-  static async startSession(options?: StartSessionOptions): Promise<UseSenseResult> {
-    return UseSenseModule.startSession(options ?? {});
+  static async startVerification(
+    request: VerificationRequest,
+  ): Promise<UseSenseResult> {
+    return UseSenseModule.startVerification({
+      sessionType: request.sessionType,
+      externalUserId: request.externalUserId,
+      identityId: request.identityId,
+      metadata: request.metadata,
+    });
   }
 
   /**
-   * Cancel an in-progress verification session.
+   * Subscribe to real-time lifecycle events emitted by the native
+   * SDK during a verification session. Call this **before**
+   * `startVerification` so the subscription captures the earliest
+   * events (`SESSION_CREATED`, `PERMISSIONS_REQUESTED`).
    *
-   * The camera UI is dismissed and the `startSession` promise rejects
-   * with a `session_cancelled` error.
+   * Returns a subscription handle; call `.remove()` to stop
+   * receiving events.
    */
-  static async cancelSession(): Promise<void> {
-    return UseSenseModule.cancelSession();
-  }
-
-  /**
-   * Get the status of a verification session by ID.
-   *
-   * @param sessionId - The session ID to query.
-   * @returns The current status and optional result.
-   */
-  static async getSessionStatus(sessionId: string): Promise<SessionStatus> {
-    return UseSenseModule.getSessionStatus(sessionId);
-  }
-
-  /**
-   * Subscribe to real-time events during the verification lifecycle.
-   *
-   * Call this before `startSession()` to receive all events.
-   *
-   * @param callback - Function invoked for each event.
-   * @returns A subscription handle with a `remove()` method.
-   *
-   * @example
-   * ```ts
-   * const listener = UseSense.addListener((event) => {
-   *   console.log(event.type);
-   * });
-   * // Later:
-   * listener.remove();
-   * ```
-   */
-  static addListener(callback: (event: UseSenseEvent) => void): UseSenseSubscription {
-    UseSenseModule.subscribeToEvents();
-    const subscription = eventEmitter.addListener('UseSenseEvent', callback);
-    return {
-      remove: () => {
-        subscription.remove();
-        UseSenseModule.unsubscribeFromEvents();
+  static addListener(
+    callback: (event: UseSenseEvent) => void,
+  ): UseSenseSubscription {
+    const subscription = eventEmitter.addListener(
+      'UseSenseEvent',
+      (raw: UseSenseEvent) => {
+        callback(raw);
       },
+    );
+    return {
+      remove: () => subscription.remove(),
     };
   }
 
   /**
-   * Get the native SDK version string.
-   *
-   * @returns Version string in semver format (e.g. `"1.0.0"`).
+   * Clear all event listeners and release native resources. Does not
+   * need to be called explicitly during normal usage; the plugin
+   * cleans up on process teardown. Useful when you want to re-
+   * initialize against a different API key or during test teardown.
    */
-  static getSdkVersion(): string {
-    return UseSenseModule.getSdkVersion();
+  static async reset(): Promise<void> {
+    return UseSenseModule.reset();
+  }
+
+  /**
+   * Whether the native plugin has an active `UseSense` client. Set
+   * to `true` after a successful `initialize` and `false` after
+   * `reset`. Useful for feature-flagging UI that should only show
+   * when the SDK is ready.
+   */
+  static async isInitialized(): Promise<boolean> {
+    return UseSenseModule.isInitialized();
   }
 }
 

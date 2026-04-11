@@ -1,16 +1,14 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { UseSenseResult } from 'react-native-usesense';
 import { RootStackParamList } from '../App';
-import ScoreCard from '../components/ScoreCard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Result'>;
 
 const DECISION_CONFIG = {
-  approved: { label: 'Approved', color: '#10B981', bg: '#064E3B' },
-  rejected: { label: 'Rejected', color: '#EF4444', bg: '#7F1D1D' },
-  manual_review: { label: 'Manual Review', color: '#F59E0B', bg: '#78350F' },
+  APPROVE: { label: 'Approved', color: '#00D4AA', bg: '#064E3B' },
+  REJECT: { label: 'Rejected', color: '#FF6B4A', bg: '#7F1D1D' },
+  MANUAL_REVIEW: { label: 'Manual Review', color: '#FFB84D', bg: '#78350F' },
 } as const;
 
 export default function ResultScreen({ route }: Props) {
@@ -25,89 +23,58 @@ export default function ResultScreen({ route }: Props) {
         </Text>
       </View>
 
-      <View style={styles.confidenceRow}>
-        <Text style={styles.confidenceLabel}>Presence Confidence</Text>
-        <Text style={styles.confidenceValue}>{result.presenceConfidence}</Text>
-      </View>
-
-      <View style={styles.scoresContainer}>
-        <ScoreCard
-          title="Channel Trust"
-          subtitle="DeepSense"
-          score={result.channelTrustScore}
-          highIsGood={true}
-        />
-        <ScoreCard
-          title="Liveness"
-          subtitle="LiveSense"
-          score={result.livenessScore}
-          highIsGood={true}
-        />
-        <ScoreCard
-          title="MatchSense Risk"
-          subtitle="MatchSense"
-          score={result.matchSenseRiskScore}
-          highIsGood={false}
-        />
-      </View>
-
-      {result.reasons.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Reasons</Text>
-          {result.reasons.map((reason, index) => (
-            <View key={index} style={styles.reasonRow}>
-              <Text style={styles.reasonBullet}>-</Text>
-              <Text style={styles.reasonText}>{reason}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {result.ruleTriggered && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Rule Triggered</Text>
-          <Text style={styles.detailValue}>{result.ruleTriggered}</Text>
-        </View>
-      )}
-
-      {result.recommendedAction && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recommended Action</Text>
-          <Text style={styles.detailValue}>{result.recommendedAction}</Text>
-        </View>
-      )}
-
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Session Details</Text>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Session ID</Text>
-          <Text style={styles.detailValueMono}>{result.sessionId}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Signature</Text>
-          <Text style={styles.detailValueMono} numberOfLines={1} ellipsizeMode="middle">
-            {result.sessionSignature}
-          </Text>
-        </View>
+        <DetailRow label="Session ID" value={result.sessionId} mono />
+        {result.sessionType && (
+          <DetailRow label="Session Type" value={result.sessionType} />
+        )}
+        {result.identityId && (
+          <DetailRow label="Identity ID" value={result.identityId} mono />
+        )}
+        <DetailRow label="Decision" value={result.decision} />
+        <DetailRow label="Timestamp" value={result.timestamp} mono />
       </View>
 
       <View style={styles.warning}>
         <Text style={styles.warningText}>
-          This result is for UI feedback only. The definitive verdict arrives at your backend via webhook.
+          This result is intentionally redacted. The SDK result is for UI
+          feedback only. Pillar scores (channel trust, liveness,
+          MatchSense risk) and the cryptographic session signature are
+          delivered to your backend via the signed webhook — never trust
+          the client-side decision for access-control.
         </Text>
       </View>
     </ScrollView>
   );
 }
 
+function DetailRow({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <View style={styles.detailRow}>
+      <Text style={styles.detailLabel}>{label}</Text>
+      <Text
+        style={mono ? styles.detailValueMono : styles.detailValue}
+        numberOfLines={mono ? 1 : undefined}
+        ellipsizeMode={mono ? 'middle' : undefined}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0F0F23',
-  },
-  content: {
-    padding: 20,
-  },
+  container: { flex: 1, backgroundColor: '#0F0F23' },
+  content: { padding: 20 },
   decisionBadge: {
     alignSelf: 'center',
     paddingHorizontal: 24,
@@ -115,29 +82,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     marginBottom: 24,
   },
-  decisionText: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  confidenceRow: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  confidenceLabel: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    marginBottom: 4,
-  },
-  confidenceValue: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  scoresContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
+  decisionText: { fontSize: 20, fontWeight: '700' },
   section: {
     backgroundColor: '#1A1A2E',
     borderRadius: 12,
@@ -148,35 +93,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#9CA3AF',
-    marginBottom: 8,
+    marginBottom: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  reasonRow: {
-    flexDirection: 'row',
-    marginBottom: 4,
-  },
-  reasonBullet: {
-    color: '#9CA3AF',
-    marginRight: 8,
-  },
-  reasonText: {
-    flex: 1,
-    color: '#D1D5DB',
-    fontSize: 14,
-  },
-  detailRow: {
-    marginBottom: 8,
-  },
-  detailLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  detailValue: {
-    fontSize: 14,
-    color: '#D1D5DB',
-  },
+  detailRow: { marginBottom: 10 },
+  detailLabel: { fontSize: 12, color: '#6B7280', marginBottom: 2 },
+  detailValue: { fontSize: 14, color: '#D1D5DB' },
   detailValueMono: {
     fontSize: 12,
     color: '#D1D5DB',
@@ -185,13 +108,12 @@ const styles = StyleSheet.create({
   warning: {
     backgroundColor: '#78350F',
     borderRadius: 8,
-    padding: 12,
+    padding: 14,
     marginTop: 8,
   },
   warningText: {
     color: '#FCD34D',
     fontSize: 12,
     lineHeight: 18,
-    textAlign: 'center',
   },
 });

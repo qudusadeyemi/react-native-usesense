@@ -32,11 +32,16 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
             else -> UseSenseEnvironment.AUTO
         }
 
+        // `gatewayKey` is intentionally NOT passed to UseSenseConfig.
+        // It existed on the v1.x Android SDK but was removed in v4.0
+        // when the Cloudflare Worker proxy took over gateway
+        // responsibilities server-side. The JS API no longer exposes
+        // the field; any stale JS callers that still pass it will
+        // have the key silently ignored.
         val config = UseSenseConfig(
             apiKey = apiKey,
             environment = environment,
             baseUrl = configMap.getString("baseUrl") ?: UseSenseConfig.DEFAULT_BASE_URL,
-            gatewayKey = configMap.getString("gatewayKey"),
             branding = branding,
             googleCloudProjectNumber = if (configMap.hasKey("googleCloudProjectNumber"))
                 configMap.getDouble("googleCloudProjectNumber").toLong()

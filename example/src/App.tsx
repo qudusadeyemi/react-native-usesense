@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Alert } from 'react-native';
-import { UseSense, UseSenseResult } from 'react-native-usesense';
+import type { UseSenseResult } from 'react-native-usesense';
 
 import HomeScreen from './screens/HomeScreen';
 import ResultScreen from './screens/ResultScreen';
@@ -16,27 +15,18 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-// TODO: Replace with your sandbox API key from https://app.usesense.ai
-const API_KEY = 'your_sandbox_api_key';
-
+/**
+ * Example app root.
+ *
+ * The SDK is intentionally NOT initialized here. Initialization is
+ * deferred to `HomeScreen`, which reads an API key from an
+ * AsyncStorage-backed TextInput and calls `UseSense.initialize` lazily
+ * on first Enroll/Authenticate tap. This matches the iOS example's
+ * `@AppStorage("apiKey")` + `SecureField` pattern and the Android
+ * example's `SharedPreferences` pattern — integrators can clone, run,
+ * paste their key once, and test without touching any source code.
+ */
 export default function App() {
-  const [isReady, setIsReady] = useState(false);
-
-  useEffect(() => {
-    UseSense.initialize({
-      apiKey: API_KEY,
-      environment: 'sandbox',
-    })
-      .then(() => setIsReady(true))
-      .catch((error) => {
-        Alert.alert('Initialization Failed', error.message);
-      });
-  }, []);
-
-  if (!isReady) {
-    return null;
-  }
-
   return (
     <NavigationContainer>
       <Stack.Navigator
@@ -49,7 +39,7 @@ export default function App() {
         <Stack.Screen
           name="Home"
           component={HomeScreen}
-          options={{ title: 'UseSense Demo' }}
+          options={{ title: 'UseSense Example' }}
         />
         <Stack.Screen
           name="Result"

@@ -162,7 +162,7 @@ The bridge handles threading automatically. `initialize()` and `startSession()` 
 
 ### Step 1: Configure the Webhook Endpoint
 
-1. Go to [UseSense dashboard](https://app.usesense.ai) > Settings > Webhooks
+1. Go to [UseSense dashboard](https://watchtower.usesense.ai) > Settings > Webhooks
 2. Add your endpoint URL (e.g., `https://api.yourapp.com/webhooks/usesense`)
 3. Copy the signing secret
 
@@ -319,11 +319,11 @@ Server: webhook.session_id === "ses_abc123" → grant access in database
 
 - [ ] Switch `environment` to `'production'` in `UseSenseConfig`
 - [ ] Use production API key (separate from sandbox)
-- [ ] Purchase credits in [UseSense dashboard](https://app.usesense.ai)
+- [ ] Purchase credits in [UseSense dashboard](https://watchtower.usesense.ai)
 - [ ] Configure production webhook endpoint
 - [ ] Implement webhook signature verification on your server
 - [ ] Test full flow on physical devices (both iOS and Android)
-- [ ] Ensure backend handles all three decision types (`approved`, `rejected`, `manual_review`)
+- [ ] Ensure backend handles all three decision types (`APPROVE`, `REJECT`, `MANUAL_REVIEW`)
 - [ ] Set up low-credit alerts (`billing.credits_low` webhook)
 - [ ] iOS: Add required privacy declarations to `Info.plist`
   - `NSCameraUsageDescription` (required)

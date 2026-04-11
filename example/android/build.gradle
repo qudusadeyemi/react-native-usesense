@@ -10,13 +10,11 @@ buildscript {
         compileSdkVersion = 34
         targetSdkVersion = 34
         ndkVersion = "25.1.8937393"
-        // Bumped from the RN template default of 1.8.0 to match the
-        // native SDK's Kotlin version (2.2.10 per its root
-        // build.gradle.kts). Keeping the example on Kotlin 1.8 while
-        // consuming a library built with Kotlin 2.2 produces a
-        // "metadata version not compatible" warning and can break
-        // ktlint + kapt pipelines.
-        kotlinVersion = "2.2.10"
+        // Left at the RN 0.73 template default of 1.8.0. Bumping this
+        // does not actually fix the UseSense SDK Kotlin version
+        // collision — see the big TODO comment on the `build-android`
+        // job in .github/workflows/ci.yml for the full diagnosis.
+        kotlinVersion = "1.8.0"
     }
     repositories {
         google()

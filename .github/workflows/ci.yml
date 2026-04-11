@@ -71,7 +71,12 @@ jobs:
       - name: Build iOS example
         working-directory: example/ios
         # CODE_SIGNING_ALLOWED=NO skips signing (CI has no team ID).
-        # `xcpretty` is provided by the macos-14 runner image by default.
+        # `xcbeautify` is preinstalled on the macos-14 runner image and
+        # is the current-generation replacement for `xcpretty` (which
+        # was removed from the image — the first bootstrap run failed
+        # with `xcpretty: command not found` / exit 127 at the start
+        # of this step and the rest of the build wrote into a dead
+        # pipe for 11 minutes before the shell finally returned).
         run: |
           set -o pipefail
           xcodebuild build \
@@ -81,7 +86,7 @@ jobs:
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
-            | xcpretty
+            | xcbeautify
 
   # ---------------------------------------------------------------------------
   # TODO(android): re-enable once one of the two root causes below is fixed.

@@ -304,6 +304,67 @@ export class UseSense {
   static async isInitialized(): Promise<boolean> {
     return UseSenseModule.isInitialized();
   }
+
+  // ─── LiveSense v4 ─────────────────────────────────────────────────────
+  // Phase 1 ticket R-1.
+  //
+  // v4 runs the perspective-distortion zoom-motion capture. Passthrough
+  // to the native SDK's startV4Session (iOS) / startV4Verification
+  // (Android). The returned promise resolves with the opaque verdict;
+  // sub-scores and pillar verdicts are never exposed.
+
+  /**
+   * Start a LiveSense v4 session.
+   *
+   * The session must already have been created on your backend and the
+   * session_token + nonce forwarded to the client. The native SDK drives
+   * the camera, signs the frame hash chain with the platform-attested
+   * key, uploads, and returns the opaque verdict.
+   */
+  static async startV4Verification(
+    request: V4VerificationRequest,
+  ): Promise<V4Verdict> {
+    return UseSenseModule.startV4Verification({
+      sessionId: request.sessionId,
+      sessionToken: request.sessionToken,
+      nonce: request.nonce,
+      apiBaseUrl: request.apiBaseUrl,
+      environment: request.environment ?? 'production',
+      displayName: request.displayName,
+      brandPrimaryColor: request.brandPrimaryColor,
+    });
+  }
+}
+
+// ─── LiveSense v4 types (R-1) ─────────────────────────────────────────────
+
+export interface V4VerificationRequest {
+  sessionId: string;
+  sessionToken: string;
+  nonce: string;
+  apiBaseUrl: string;
+  environment?: UseSenseEnvironment;
+  displayName?: string;
+  brandPrimaryColor?: string;
+}
+
+export type V4Decision = 'pass' | 'fail' | 'review';
+export type V4Confidence = 'high' | 'medium' | 'low';
+export type V4AssuranceLevel = 'mobile_hardware' | 'web_attested' | 'web_unattested';
+export type V4CaptureChannel = 'ios' | 'android' | 'rn' | 'flutter' | 'web';
+
+/**
+ * Opaque verdict from POST /v1/sessions/:id/result. Matches the server
+ * contract exactly; no sub-scores leak through.
+ */
+export interface V4Verdict {
+  session_id: string;
+  verdict: V4Decision;
+  confidence: V4Confidence;
+  assurance_level_achieved: V4AssuranceLevel;
+  capture_channel: V4CaptureChannel;
+  match_sense_embedding_id: string | null;
+  timestamp: string;
 }
 
 export default UseSense;

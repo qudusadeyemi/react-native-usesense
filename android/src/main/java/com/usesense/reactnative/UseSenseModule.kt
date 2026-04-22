@@ -112,6 +112,73 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
         })
     }
 
+    /**
+     * Phase 1 ticket R-1: passthrough to UseSense.startV4Verification.
+     *
+     * The native SDK validates the request, launches the v4 capture
+     * activity, and resolves the promise with the opaque verdict.
+     */
+    @ReactMethod
+    fun startV4Verification(requestMap: ReadableMap, promise: Promise) {
+        val activity = currentActivity ?: run {
+            promise.reject("NO_ACTIVITY", "No current activity available")
+            return
+        }
+        val sessionId = requestMap.getString("sessionId")
+            ?: return promise.reject("INVALID_REQUEST", "sessionId is required")
+        val sessionToken = requestMap.getString("sessionToken")
+            ?: return promise.reject("INVALID_REQUEST", "sessionToken is required")
+        val nonce = requestMap.getString("nonce")
+            ?: return promise.reject("INVALID_REQUEST", "nonce is required")
+        val apiBaseUrl = requestMap.getString("apiBaseUrl")
+            ?: return promise.reject("INVALID_REQUEST", "apiBaseUrl is required")
+        val environment = requestMap.getString("environment") ?: "production"
+        val displayName = if (requestMap.hasKey("displayName")) requestMap.getString("displayName") else null
+        val brandColor = if (requestMap.hasKey("brandPrimaryColor"))
+            runCatching { android.graphics.Color.parseColor(requestMap.getString("brandPrimaryColor")) }.getOrNull()
+        else null
+
+        val request = com.usesense.sdk.api.V4VerificationRequest(
+            sessionId = sessionId,
+            sessionToken = sessionToken,
+            nonce = nonce,
+            apiBaseUrl = apiBaseUrl,
+            environment = environment,
+            brandPrimaryColor = brandColor,
+            displayName = displayName
+        )
+
+        UseSense.startV4Verification(activity, request, object : com.usesense.sdk.api.V4VerificationCallback {
+            override fun onComplete(verdict: com.usesense.sdk.api.V4Verdict) {
+                val map = Arguments.createMap().apply {
+                    putString("session_id", verdict.sessionId)
+                    putString("verdict", verdict.verdict.name.lowercase())
+                    putString("confidence", verdict.confidence.name.lowercase())
+                    putString("assurance_level_achieved", verdict.assuranceLevelAchieved)
+                    putString("capture_channel", "rn")
+                    if (verdict.matchSenseEmbeddingId != null) {
+                        putString("match_sense_embedding_id", verdict.matchSenseEmbeddingId)
+                    } else {
+                        putNull("match_sense_embedding_id")
+                    }
+                    putString("timestamp", verdict.timestamp)
+                }
+                promise.resolve(map)
+            }
+            override fun onFailure(error: Throwable) {
+                promise.reject("V4_FAILED", error.message ?: "v4 verification failed", error)
+            }
+            override fun onPhaseChange(phase: com.usesense.sdk.api.V4Phase) {
+                val map = Arguments.createMap().apply {
+                    putString("type", "V4_PHASE_CHANGE")
+                    putString("phase", phase.name.lowercase())
+                    putDouble("timestamp", System.currentTimeMillis().toDouble())
+                }
+                sendEvent("UseSenseEvent", map)
+            }
+        })
+    }
+
     @ReactMethod
     fun subscribeToEvents() {
         eventUnsubscribe?.invoke()

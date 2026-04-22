@@ -20,6 +20,11 @@ RCT_EXTERN_METHOD(subscribeToEvents)
 
 RCT_EXTERN_METHOD(unsubscribeFromEvents)
 
+// LiveSense v4 passthrough (R-1)
+RCT_EXTERN_METHOD(startV4Verification:(NSDictionary *)request
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(getSdkVersion)
 
 @end

@@ -178,6 +178,49 @@ class UseSenseModule: RCTEventEmitter {
         }
     }
 
+    // MARK: - LiveSense v4 (R-1)
+
+    /// Passthrough for the v4 zoom-motion capture. Resolves with the
+    /// opaque verdict; sub-scores never cross the bridge.
+    @objc
+    func startV4Verification(_ request: NSDictionary,
+                             resolver resolve: @escaping RCTPromiseResolveBlock,
+                             rejecter reject: @escaping RCTPromiseRejectBlock) {
+        guard let sessionIdStr = request["sessionId"] as? String,
+              let sessionId = UUID(uuidString: sessionIdStr),
+              let sessionToken = request["sessionToken"] as? String,
+              let nonce = request["nonce"] as? String,
+              let apiBaseStr = request["apiBaseUrl"] as? String,
+              let apiBaseURL = URL(string: apiBaseStr) else {
+            reject("INVALID_REQUEST", "sessionId, sessionToken, nonce, apiBaseUrl required", nil)
+            return
+        }
+        let environment = request["environment"] as? String ?? "production"
+        let displayName = request["displayName"] as? String
+        let client = UseSense(config: UseSenseConfig(apiKey: "v4-bridge"))
+        let config = LiveSenseV4Config(
+            sessionId: sessionId,
+            sessionToken: sessionToken,
+            nonce: nonce,
+            apiBaseURL: apiBaseURL,
+            environment: environment,
+            brandPrimaryColor: nil,
+            displayName: displayName
+        )
+
+        let delegate = V4BridgeDelegate(resolve: resolve, reject: reject, emit: { [weak self] body in
+            guard let self = self, self.hasListeners else { return }
+            DispatchQueue.main.async { self.sendEvent(withName: "UseSenseEvent", body: body) }
+        })
+        let session = client.startV4Session(config: config, delegate: delegate)
+        delegate.retain(session)
+        do {
+            try session.start()
+        } catch {
+            reject("V4_FAILED", error.localizedDescription, error)
+        }
+    }
+
     @objc
     func reset(_ resolve: @escaping RCTPromiseResolveBlock,
                rejecter reject: @escaping RCTPromiseRejectBlock) {

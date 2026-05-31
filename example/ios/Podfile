@@ -32,6 +32,23 @@ end
 target 'UseSenseExample' do
   config = use_native_modules!
 
+  # UseSenseSDK override — temporary until the iOS SDK ships V4 + Flows.
+  #
+  # The plugin's podspec pins `UseSenseSDK ~> 4.2`, but the v4 capture API
+  # (LiveSenseV4Session / V4Verdict / LiveSenseV4Delegate / ...) and the
+  # Flows runner (FlowRunState / FlowOutcome / FlowError / ...) live on
+  # `feature/v4-i2-polish` and have never been cut into a 4.2.x trunk
+  # release. Without this override, `pod install` resolves to 4.2.2 from
+  # CocoaPods trunk and the example build fails with "cannot find type
+  # 'FlowRunState'" / "cannot find type 'LiveSenseV4Session'".
+  #
+  # Remove this line and let the podspec's `~> 4.2` constraint resolve
+  # again once the next iOS SDK release (containing V4 + Flows) is
+  # published.
+  pod 'UseSenseSDK',
+    :git => 'https://github.com/qudusadeyemi/usesense-ios-sdk.git',
+    :branch => 'feature/v4-i2-polish'
+
   use_react_native!(
     :path => config[:reactNativePath],
     # Enables Flipper.

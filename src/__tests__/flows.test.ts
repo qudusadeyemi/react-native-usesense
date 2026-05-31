@@ -115,6 +115,9 @@ describe('UseSenseFlows.runFlow', () => {
       ['provider_unavailable', 'provider_unavailable'],
       ['cancelled', 'cancelled'],
       ['unsupported_action', 'unsupported_action'],
+      // Server form validation: the native runner handles this inline, but
+      // host apps driving advance() outside the runner still see it.
+      ['invalid_input', 'invalid_input'],
       // Anything unknown collapses to FlowErrorCode 'unknown'.
       ['lol_what', 'unknown'],
     ];

@@ -46,7 +46,7 @@ class UseSenseFlowsModule: NSObject {
                 flowRunId: flowRunId,
                 sdkToken: sdkToken,
                 apiBaseURL: baseURL,
-                from: presenter,
+                from: presenter
             ) { runResult in
                 switch runResult {
                 case .success(let r):

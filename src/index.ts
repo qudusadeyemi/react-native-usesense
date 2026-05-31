@@ -368,3 +368,15 @@ export interface V4Verdict {
 }
 
 export default UseSense;
+
+// Slice 5d: Flows. A parallel surface to Sessions — host apps choose one
+// per call. See guides/flows/sessions-vs-flows in the API docs.
+export {
+  UseSenseFlows,
+  FlowError,
+  type FlowErrorCode,
+  type FlowOutcome,
+  type FlowRunResult,
+  type FlowRunState,
+  type RunFlowOptions,
+} from './flows';

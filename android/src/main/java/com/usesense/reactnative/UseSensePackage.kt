@@ -8,7 +8,12 @@ import com.facebook.react.uimanager.ViewManager
 class UseSensePackage : ReactPackage {
 
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-        return listOf(UseSenseModule(reactContext))
+        return listOf(
+            UseSenseModule(reactContext),
+            // Slice 5d: Flows runner module (parallel surface to Sessions, not
+            // a replacement). Host apps pick one per call.
+            UseSenseFlowsModule(reactContext),
+        )
     }
 
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {

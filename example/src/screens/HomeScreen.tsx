@@ -16,8 +16,14 @@ import {
   UseSense,
   UseSenseError,
   UseSenseEnvironment,
+  UseSenseFlows,
+  FlowError,
 } from 'react-native-usesense';
 import { RootStackParamList } from '../App';
+
+// Public API base for creating flow runs and for the SDK Flow runner. Sandbox
+// vs production is selected by the API key + the x-environment header.
+const API_BASE = 'https://api.usesense.ai';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -33,6 +39,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [apiKeyVisible, setApiKeyVisible] = useState(false);
   const [useProduction, setUseProduction] = useState(false);
   const [identityId, setIdentityId] = useState('');
+  const [flowId, setFlowId] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Tracks the key the SDK is currently initialized for. If the user
@@ -142,6 +149,75 @@ export default function HomeScreen({ navigation }: Props) {
             'Verification Failed',
             `${err.code ?? 'unknown'}: ${err.message ?? 'Session could not be completed.'}`,
           );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Run a Flow. Flows are token-based and do NOT use UseSense.initialize: the
+  // host backend creates the run and returns flowRunId + sdkToken. The example
+  // does that inline with the API key so a developer can test a flow end to end,
+  // then hands the minted credentials to the native Flow runner.
+  const handleFlow = async () => {
+    const key = apiKey.trim();
+    const flow = flowId.trim();
+    if (!key) {
+      Alert.alert('API Key Required', 'Enter your API key to run a flow.');
+      return;
+    }
+    if (!flow) {
+      Alert.alert('Flow ID Required', 'Enter a Flow ID (looks like flw_...).');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/v1/flow-runs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': key,
+          'x-environment': useProduction ? 'production' : 'sandbox',
+        },
+        body: JSON.stringify({
+          flowId: flow,
+          subject: { externalRef: 'react-native-demo-user' },
+          mint_sdk_token: true,
+          sdk_version: 'react-native-demo',
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(
+          `Could not create flow run (HTTP ${res.status}): ${await res.text()}`,
+        );
+      }
+      const data = (await res.json()) as {
+        flowRun: { id: string };
+        sdkToken?: string;
+      };
+      if (!data.sdkToken) {
+        throw new Error('No sdkToken returned (mint_sdk_token).');
+      }
+
+      const result = await UseSenseFlows.runFlow({
+        flowRunId: data.flowRun.id,
+        sdkToken: data.sdkToken,
+        apiBaseUrl: API_BASE,
+      });
+      Alert.alert(
+        'Flow Finished',
+        `State: ${result.state}${result.outcome ? `\nOutcome: ${result.outcome}` : ''}`,
+      );
+    } catch (error) {
+      if (error instanceof FlowError) {
+        if (error.code === 'cancelled') return; // user backed out — silent
+        Alert.alert('Flow Failed', `${error.code}: ${error.message}`);
+      } else {
+        Alert.alert(
+          'Flow Failed',
+          error instanceof Error ? error.message : String(error),
+        );
       }
     } finally {
       setLoading(false);
@@ -267,6 +343,38 @@ export default function HomeScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Run a Flow</Text>
+        <Text style={styles.cardDescription}>
+          Run an operator-authored Flow (e.g. document + face steps). The example
+          creates the run with your API key, then launches the native Flow runner.
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Flow ID (e.g. flw_abc123)"
+          placeholderTextColor="#6B7280"
+          value={flowId}
+          onChangeText={setFlowId}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <TouchableOpacity
+          style={[
+            styles.button,
+            styles.flowButton,
+            (!hasKey || !flowId.trim() || loading) && styles.buttonDisabled,
+          ]}
+          onPress={handleFlow}
+          disabled={!hasKey || !flowId.trim() || loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.buttonText}>Run a Flow</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
       <TouchableOpacity
         style={styles.eventLogLink}
         onPress={() => navigation.navigate('EventLog')}
@@ -344,6 +452,7 @@ const styles = StyleSheet.create({
   button: { borderRadius: 8, padding: 14, alignItems: 'center' },
   enrollButton: { backgroundColor: '#4F7CFF' },
   authButton: { backgroundColor: '#00D4AA' },
+  flowButton: { backgroundColor: '#A855F7' },
   buttonDisabled: { opacity: 0.4 },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   eventLogLink: { alignItems: 'center', paddingVertical: 12 },

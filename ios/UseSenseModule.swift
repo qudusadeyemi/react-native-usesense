@@ -86,11 +86,22 @@ class UseSenseModule: RCTEventEmitter {
         let apiEndpoint = (config["apiEndpoint"] as? String)
             ?? UseSenseConfig.defaultEndpoint
 
+        // v4.2: Optional on-device antispoof classifier flag (defaults to false;
+        // watchtower runs the classifier server-side when off).
+        let antispoofOnDeviceEnabled = (config["antispoofOnDeviceEnabled"] as? Bool) ?? false
+        // LiveSense v4 capture flow opt-in (zoom phase + frame phase tags).
+        let liveSenseV4Enabled = (config["liveSenseV4Enabled"] as? Bool) ?? false
+        let sdkOptions = SDKOptions(
+            antispoofOnDeviceEnabled: antispoofOnDeviceEnabled,
+            liveSenseV4Enabled: liveSenseV4Enabled
+        )
+
         let sdkConfig = UseSenseConfig(
             apiEndpoint: apiEndpoint,
             apiKey: apiKey,
             environment: environment,
-            branding: brandingConfig
+            branding: brandingConfig,
+            options: sdkOptions
         )
 
         // Create (or replace) the client. If a previous client was

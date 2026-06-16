@@ -4,6 +4,28 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-06-16
+
+Tracks the native SDK 4.3.0 release. Additive and backward-compatible —
+existing integrations are unaffected; both new flags default to `false`.
+
+### Added
+
+- **`UseSenseConfig.liveSenseV4Enabled`** — opt the session into the
+  LiveSense v4 capture flow (constitutive zoom-motion phase + per-frame
+  capture-phase tagging + `x-usesense-sdk-version: v4` header). The org
+  must also have `livesense_v4_enabled` in its server-side features map.
+- **`UseSenseConfig.antispoofOnDeviceEnabled`** — opt in to the on-device
+  CelebA-Spoof classifier (native loads the bundled model and attaches
+  per-frame spoof probabilities to the upload). Defaults off, in which
+  case the watchtower backend runs the classifier server-side.
+
+### Changed
+
+- Native SDK dependency bumped to `4.3.0` (iOS `UseSenseSDK ~> 4.3` via
+  CocoaPods; Android `ai.usesense:sdk:4.3.0` via Maven Central). The
+  example app's temporary git-branch override for the iOS SDK is removed.
+
 ## [2.0.0] - 2026-04-11
 
 **Breaking release.** The plugin's entire JavaScript API has been

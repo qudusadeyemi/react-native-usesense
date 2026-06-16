@@ -36,12 +36,12 @@ dependencies {
     implementation "com.facebook.react:react-native:+"
 
     // UseSense Android SDK — published to Maven Central at
-    // central.sonatype.com/artifact/ai.usesense/sdk. Pinned to 4.2.1
-    // because that's the first release with the vanniktech-based
-    // Maven Central artifact shape and the terminal-screen centering
-    // fix. mavenCentral() is already in the `repositories` block above,
-    // so no custom repository declaration is needed.
-    implementation "ai.usesense:sdk:4.2.1"
+    // central.sonatype.com/artifact/ai.usesense/sdk. Pinned to 4.3.0,
+    // the release that adds the V4 capture API + Flows runner (matches
+    // the iOS SDK 4.3.0 the plugin's podspec depends on). mavenCentral()
+    // is already in the `repositories` block above, so no custom
+    // repository declaration is needed.
+    implementation "ai.usesense:sdk:4.3.0"
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${safeExtGet('kotlinVersion', '2.0.0')}"
 }

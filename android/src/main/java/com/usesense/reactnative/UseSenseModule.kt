@@ -38,6 +38,13 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
         // responsibilities server-side. The JS API no longer exposes
         // the field; any stale JS callers that still pass it will
         // have the key silently ignored.
+        // v4.2: Optional on-device antispoof classifier flag.
+        val antispoofOnDeviceEnabled = configMap.hasKey("antispoofOnDeviceEnabled") &&
+            configMap.getBoolean("antispoofOnDeviceEnabled")
+        // LiveSense v4 capture flow opt-in.
+        val liveSenseV4Enabled = configMap.hasKey("liveSenseV4Enabled") &&
+            configMap.getBoolean("liveSenseV4Enabled")
+
         val config = UseSenseConfig(
             apiKey = apiKey,
             environment = environment,
@@ -46,6 +53,8 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
             googleCloudProjectNumber = if (configMap.hasKey("googleCloudProjectNumber"))
                 configMap.getDouble("googleCloudProjectNumber").toLong()
             else UseSenseConfig.DEFAULT_GOOGLE_CLOUD_PROJECT_NUMBER,
+            antispoofOnDeviceEnabled = antispoofOnDeviceEnabled,
+            liveSenseV4Enabled = liveSenseV4Enabled,
         )
 
         val context = reactContext.applicationContext

@@ -72,6 +72,27 @@ export interface UseSenseConfig {
   apiEndpoint?: string;
   /** SDK-level branding overrides. */
   branding?: BrandingConfig;
+  /**
+   * Opt in to the on-device antispoof classifier (v4.2). When enabled the
+   * native layer runs the bundled CelebA-Spoof model during capture and
+   * attaches per-frame spoof probabilities to the uploaded metadata. When
+   * disabled (default), the watchtower backend runs the classifier server-side.
+   * See `docs/sdk-specs/antispoof-classifier-sdk-spec.md` in the watchtower
+   * repo for the rollout plan and crosscheck policy.
+   */
+  antispoofOnDeviceEnabled?: boolean;
+
+  /**
+   * Opt the session into the LiveSense v4 capture flow. When true the native
+   * layer:
+   *   - sends `x-usesense-sdk-version: v4` on session creation
+   *   - inserts a constitutive zoom-motion phase between baseline and the
+   *     active challenge (additive, not a replacement)
+   *   - tags every captured frame with its capture phase
+   * The org must also have `livesense_v4_enabled` set in its features map
+   * server-side.
+   */
+  liveSenseV4Enabled?: boolean;
 }
 
 /**
@@ -241,6 +262,8 @@ export class UseSense {
       environment: config.environment ?? 'auto',
       apiEndpoint: config.apiEndpoint,
       branding: config.branding,
+      antispoofOnDeviceEnabled: config.antispoofOnDeviceEnabled ?? false,
+      liveSenseV4Enabled: config.liveSenseV4Enabled ?? false,
     });
   }
 

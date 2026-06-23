@@ -26,5 +26,5 @@ Pod::Spec.new do |s|
   # redaction result type with a completely different UseSenseConfig
   # init signature. See CHANGELOG [2.0.0] for the full rewrite
   # rationale.
-  s.dependency "UseSenseSDK", "~> 4.3"
+  s.dependency "UseSenseSDK", "~> 4.4"
 end

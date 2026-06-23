@@ -4,6 +4,17 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.1] - 2026-06-23
+
+### Fixed
+
+- **Android build failure.** The Android bridge (`UseSenseModule.kt`) passed
+  `antispoofOnDeviceEnabled` + `liveSenseV4Enabled` to `UseSenseConfig`, but
+  those params shipped only on the iOS SDK — the pinned Android SDK
+  (`ai.usesense:sdk:4.3.0`) lacked them, so Android consumers failed to compile.
+  Bumped the Android SDK pin to `4.4.0`, which adds both params (and on-device
+  antispoof + LiveSense v4) at iOS parity, and the iOS pod pin to `~> 4.4`.
+
 ## [2.1.0] - 2026-06-16
 
 Tracks the native SDK 4.3.0 release. Additive and backward-compatible —

@@ -23,13 +23,20 @@ class UseSenseFlowsModule: NSObject {
         return false
     }
 
-    /// `runFlow(flowRunId, sdkToken, apiBaseUrl?, resolve, reject)` — Promise.
-    /// The SDK takes care of presentation; we just resolve when the run
-    /// reaches a terminal state.
+    /// `runFlow(flowRunId, sdkToken, apiBaseUrl?, appearance?, copy?, resolve,
+    /// reject)` — Promise. The SDK takes care of presentation; we just resolve
+    /// when the run reaches a terminal state.
+    ///
+    /// `appearance` / `copy` are the optional white-label maps forwarded raw
+    /// from JS (camelCase, matching the web contract). We decode them via the
+    /// SDK's `decodeFromJSONObject`, which degrades a malformed payload to nil
+    /// (built-in tokens) rather than failing the run.
     @objc
     func runFlow(_ flowRunId: String,
                  sdkToken: String,
                  apiBaseUrl: String?,
+                 appearance: NSDictionary?,
+                 copy: NSDictionary?,
                  resolver resolve: @escaping RCTPromiseResolveBlock,
                  rejecter reject: @escaping RCTPromiseRejectBlock) {
         let baseString = apiBaseUrl ?? "https://api.usesense.ai"
@@ -37,6 +44,8 @@ class UseSenseFlowsModule: NSObject {
             reject("unknown", "Invalid apiBaseUrl: \(baseString)", nil)
             return
         }
+        let resolvedAppearance = (appearance as? [String: Any]).flatMap(FlowAppearance.decodeFromJSONObject)
+        let resolvedCopy = (copy as? [String: Any]).flatMap(FlowCopy.decodeFromJSONObject)
         DispatchQueue.main.async {
             guard let presenter = Self.topViewController() else {
                 reject("unknown", "No view controller to present from", nil)
@@ -46,6 +55,8 @@ class UseSenseFlowsModule: NSObject {
                 flowRunId: flowRunId,
                 sdkToken: sdkToken,
                 apiBaseURL: baseURL,
+                appearance: resolvedAppearance,
+                copy: resolvedCopy,
                 from: presenter
             ) { runResult in
                 switch runResult {

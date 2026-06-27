@@ -5,12 +5,16 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.ReadableMap
+import com.usesense.sdk.flows.FlowAppearance
+import com.usesense.sdk.flows.FlowCopy
 import com.usesense.sdk.flows.FlowError
 import com.usesense.sdk.flows.FlowOutcome
 import com.usesense.sdk.flows.FlowRunResult
 import com.usesense.sdk.flows.FlowRunState
 import com.usesense.sdk.flows.FlowsCallback
 import com.usesense.sdk.flows.UseSenseFlows
+import org.json.JSONObject
 
 /**
  * React Native bridge for the UseSense Android Flows runner.
@@ -30,7 +34,14 @@ class UseSenseFlowsModule(private val reactContext: ReactApplicationContext) :
     override fun getName(): String = "UseSenseFlowsModule"
 
     @ReactMethod
-    fun runFlow(flowRunId: String?, sdkToken: String?, apiBaseUrl: String?, promise: Promise) {
+    fun runFlow(
+        flowRunId: String?,
+        sdkToken: String?,
+        apiBaseUrl: String?,
+        appearance: ReadableMap?,
+        copy: ReadableMap?,
+        promise: Promise,
+    ) {
         if (flowRunId.isNullOrEmpty() || sdkToken.isNullOrEmpty()) {
             promise.reject("unknown", "flowRunId and sdkToken are required")
             return
@@ -40,6 +51,12 @@ class UseSenseFlowsModule(private val reactContext: ReactApplicationContext) :
             return
         }
         val baseUrl = apiBaseUrl ?: "https://api.usesense.ai"
+
+        // White-label maps are forwarded raw from JS (camelCase, matching the
+        // web contract). Decode them via the SDK; a malformed payload degrades
+        // to null (built-in tokens) rather than failing the run.
+        val resolvedAppearance = appearance?.let { runCatching { FlowAppearance.decode(it.toJSONObject()) }.getOrNull() }
+        val resolvedCopy = copy?.let { runCatching { FlowCopy.decode(it.toJSONObject()) }.getOrNull() }
 
         val callback = object : FlowsCallback {
             override fun onResult(result: FlowRunResult) {
@@ -64,9 +81,18 @@ class UseSenseFlowsModule(private val reactContext: ReactApplicationContext) :
             sdkToken = sdkToken,
             callback = callback,
             apiBaseUrl = baseUrl,
+            appearance = resolvedAppearance,
+            copy = resolvedCopy,
         )
     }
 
     private fun stateWire(state: FlowRunState): String = state.wire
     private fun outcomeWire(outcome: FlowOutcome): String = outcome.wire
+
+    /**
+     * Convert a React Native [ReadableMap] to an [org.json.JSONObject] so the
+     * SDK's `decode(JSONObject)` can read it. `toHashMap()` yields nested
+     * HashMap / ArrayList values, which `JSONObject(Map)` walks recursively.
+     */
+    private fun ReadableMap.toJSONObject(): JSONObject = JSONObject(this.toHashMap() as Map<*, *>)
 }

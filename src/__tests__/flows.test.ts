@@ -51,7 +51,7 @@ describe('UseSenseFlows.runFlow', () => {
       state: 'completed',
       outcome: 'APPROVE',
     });
-    expect(runFlowMock).toHaveBeenCalledWith('fr_1', 'tok_a', null);
+    expect(runFlowMock).toHaveBeenCalledWith('fr_1', 'tok_a', null, null, null);
   });
 
   it('surfaces a cancelled run as outcome null', async () => {
@@ -87,7 +87,29 @@ describe('UseSenseFlows.runFlow', () => {
       'fr_3',
       'tok_c',
       'https://staging.example.com',
+      null,
+      null,
     );
+  });
+
+  it('forwards white-label appearance and copy to the native side', async () => {
+    runFlowMock.mockResolvedValue({
+      flowRunId: 'fr_4',
+      state: 'completed',
+      outcome: 'APPROVE',
+    });
+
+    const appearance = { colors: { primary: '#4F7CFF' }, mode: 'light' as const };
+    const copy = { buttons: { continue: 'Proceed' } };
+
+    await UseSenseFlows.runFlow({
+      flowRunId: 'fr_4',
+      sdkToken: 'tok_d',
+      appearance,
+      copy,
+    });
+
+    expect(runFlowMock).toHaveBeenCalledWith('fr_4', 'tok_d', null, appearance, copy);
   });
 
   it('translates a native reject into a typed FlowError', async () => {

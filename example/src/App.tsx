@@ -39,7 +39,7 @@ export default function App() {
         <Stack.Screen
           name="Home"
           component={HomeScreen}
-          options={{ title: 'UseSense Example' }}
+          options={{ title: 'Sense Example' }}
         />
         <Stack.Screen
           name="Result"

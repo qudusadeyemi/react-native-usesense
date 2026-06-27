@@ -402,4 +402,13 @@ export {
   type FlowRunResult,
   type FlowRunState,
   type RunFlowOptions,
+  // White-label contract (Phase 1 appearance + Phase 2 copy). Forwarded to the
+  // native runner via the bridge.
+  type FlowAppearance,
+  type FlowCopy,
+  type AppearanceColors,
+  type AppearanceTypography,
+  type AppearanceShape,
+  type AppearanceIcons,
+  type AppearanceLoader,
 } from './flows';

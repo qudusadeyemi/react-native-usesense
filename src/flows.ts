@@ -34,7 +34,15 @@ const LINKING_ERROR =
 function nativeModule() {
   const m = NativeModules.UseSenseFlowsModule;
   if (!m) throw new Error(LINKING_ERROR);
-  return m as { runFlow: (flowRunId: string, sdkToken: string, apiBaseUrl: string | null) => Promise<NativeFlowRunResult> };
+  return m as {
+    runFlow: (
+      flowRunId: string,
+      sdkToken: string,
+      apiBaseUrl: string | null,
+      appearance: FlowAppearance | null,
+      copy: FlowCopy | null,
+    ) => Promise<NativeFlowRunResult>;
+  };
 }
 
 /**
@@ -117,12 +125,154 @@ export class FlowError extends Error {
   }
 }
 
+// ─── White-label contract (mirrors the web SDK) ───────────────────────────
+//
+// FlowAppearance + FlowCopy are the shared customization schemas (Phase 1 +
+// Phase 2 of the white-label initiative). They mirror the web SDK contract
+// (packages/sdk/src/flows/theme.ts + copy.ts) one-to-one with camelCase keys.
+// The RN bridge forwards the raw object across to the native iOS/Android
+// runner, which decodes it (FlowAppearance/FlowCopy.decodeFromJSONObject).
+// Everything is optional; an omitted key falls back to the hosted-page tokens.
+
+/** A palette layer. `dark` overrides apply only in dark mode. */
+export interface AppearanceColors {
+  primary?: string;
+  primaryForeground?: string;
+  background?: string;
+  surface?: string;
+  foreground?: string;
+  muted?: string;
+  border?: string;
+  success?: string;
+  error?: string;
+  warning?: string;
+  /** Overrides applied on top of the dark base (e.g. a darker background). */
+  dark?: Omit<AppearanceColors, 'dark'>;
+}
+
+export interface AppearanceTypography {
+  /** Body font-family name (e.g. "DM Sans"). */
+  fontFamily?: string;
+  /** Heading/display font-family; defaults to fontFamily when omitted. */
+  displayFamily?: string;
+  /** A stylesheet URL or @font-face block to load custom fonts (web only;
+   *  ignored by the native runners, which load fonts from app resources). */
+  fontCss?: string;
+}
+
+export interface AppearanceShape {
+  /** Base corner radius (cards, inputs). */
+  radius?: number;
+  /** Button corner radius; defaults to radius. */
+  buttonRadius?: number;
+  buttonStyle?: 'filled' | 'outline';
+}
+
+/** Custom illustration/icon overrides (image URLs replacing built-in glyphs). */
+export interface AppearanceIcons {
+  /** Success result screen. */ success?: string;
+  /** Under-review result screen. */ review?: string;
+  /** Not-verified result screen. */ notVerified?: string;
+  /** Any other named slot by URL. */
+  [slot: string]: string | undefined;
+}
+
+/** Loading animation: a built-in preset or a custom asset. */
+export interface AppearanceLoader {
+  /** Built-in preset. Default 'spinner'. */
+  style?: 'spinner' | 'dots' | 'bar';
+  /** Custom loader asset URL; overrides style. */
+  imageUrl?: string;
+}
+
+/**
+ * White-label appearance overrides for the Flow runner. Supplied at SDK init
+ * (this option) and merged over the operator's server-delivered branding by
+ * the native runner. Mirrors `FlowAppearance` in the web SDK.
+ */
+export interface FlowAppearance {
+  colors?: AppearanceColors;
+  typography?: AppearanceTypography;
+  shape?: AppearanceShape;
+  logo?: { url?: string; placement?: 'header' | 'center' | 'none'; height?: number };
+  background?: { color?: string; imageUrl?: string };
+  /** Custom illustrations for result screens / icon slots. */
+  icons?: AppearanceIcons;
+  /** Loading-animation preset or custom asset. */
+  loader?: AppearanceLoader;
+  /** Force a palette or follow the OS (default 'auto'). */
+  mode?: 'light' | 'dark' | 'auto';
+}
+
+/**
+ * White-label copy overrides for the Flow runner. Every subject-facing string
+ * can be overridden; an omitted key keeps the built-in copy. Supplied at SDK
+ * init and merged over the operator's server-delivered copy by the native
+ * runner. Mirrors `FlowCopy` in the web SDK.
+ */
+export interface FlowCopy {
+  /** Optional welcome/intro shown before the first step (when set). */
+  welcome?: { title?: string; body?: string };
+  /** Shared button labels. */
+  buttons?: {
+    continue?: string;
+    cancel?: string;
+    tryAgain?: string;
+    retake?: string;
+    useThisPhoto?: string;
+    uploadInstead?: string;
+    scan?: string;
+    upload?: string;
+    submitting?: string;
+  };
+  /** Titles shown under the loader for each transient state. */
+  loading?: { default?: string; verifying?: string; submittingDocument?: string; checkingQuality?: string };
+  /** Face capture primer. */
+  face?: { title?: string; body?: string; start?: string };
+  /** Document capture surfaces. */
+  document?: {
+    selectTitle?: string; selectBody?: string;
+    primerTitle?: string; primerBody?: string;
+    uploadTitle?: string; uploadBody?: string;
+    scanTitle?: string; scanBody?: string;
+    confirmTitle?: string; confirmBody?: string;
+  };
+  /** Form + ID-number surfaces. */
+  form?: { title?: string };
+  idNumber?: { title?: string; body?: string };
+  /** Terminal result screens. */
+  result?: {
+    successTitle?: string; successBody?: string;
+    reviewTitle?: string; reviewBody?: string;
+    notVerifiedTitle?: string; notVerifiedBody?: string;
+    cancelledTitle?: string;
+  };
+  /** Error copy (provider failure vs unreadable capture vs generic). */
+  errors?: { generic?: string; providerUnavailable?: string; documentUnreadable?: string };
+  /** Privacy / consent disclosures shown to the subject. */
+  privacy?: { disclosure?: string; consentTitle?: string; consentBody?: string };
+  /** Free-form help text / tooltips keyed by an SDK-defined slot id. */
+  help?: Record<string, string>;
+}
+
 /** Options for `UseSenseFlows.runFlow`. */
 export interface RunFlowOptions {
   flowRunId: string;
   sdkToken: string;
   /** Defaults to `https://api.usesense.ai`. */
   apiBaseUrl?: string;
+  /**
+   * SDK-init white-label appearance. Forwarded to the native runner, which
+   * decodes it and merges it over the operator's server-delivered branding
+   * (SDK-init takes precedence). Omit to use the hosted-page tokens.
+   */
+  appearance?: FlowAppearance;
+  /**
+   * SDK-init white-label copy. Forwarded to the native runner, which decodes
+   * it and merges it over the operator's server-delivered copy (SDK-init takes
+   * precedence). Omit to keep the built-in subject-facing strings.
+   */
+  copy?: FlowCopy;
 }
 
 /**
@@ -142,6 +292,8 @@ export const UseSenseFlows = {
         options.flowRunId,
         options.sdkToken,
         options.apiBaseUrl ?? null,
+        options.appearance ?? null,
+        options.copy ?? null,
       );
       return {
         flowRunId: native.flowRunId,

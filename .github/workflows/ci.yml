@@ -66,7 +66,12 @@ jobs:
 
       - name: Install CocoaPods
         working-directory: example/ios
-        run: pod install --repo-update
+        # `pod install` honours the committed Podfile.lock and fails when the dev
+        # pod (react-native-usesense) has bumped its UseSenseSDK constraint past the
+        # locked version (CocoaPods refuses to bump a locked pod on `install`). Fall
+        # back to updating just the UseSense pods so the example always resolves the
+        # SDK version the podspec requires (`~> 4.x`) and the iOS bridge gets compiled.
+        run: pod install --repo-update || pod update UseSenseSDK --repo-update
 
       - name: Build iOS example
         working-directory: example/ios

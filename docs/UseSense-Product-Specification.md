@@ -1,6 +1,6 @@
-# UseSense — Product Specification
+# Sense — Product Specification
 
-*A reverse-engineered product specification covering the full UseSense platform: mobile SDKs (iOS, Android, React Native, Flutter), Web SDK, hosted pages, and the Watchtower operator dashboard + backend. Written for product, QA, and engineering reference.*
+*A reverse-engineered product specification covering the full Sense platform: mobile SDKs (iOS, Android, React Native, Flutter), Web SDK, hosted pages, and the Watchtower operator dashboard + backend. Written for product, QA, and engineering reference.*
 
 **Format**: Capability → Sub-capability → Epic → User Story → Acceptance Criteria (AC) + Negative Acceptance Criteria (NAC).
 
@@ -44,7 +44,7 @@
 - [C25. Compliance & Privacy](#c25-compliance--privacy)
 - [C26. Ask SenSei (AI Case Analysis)](#c26-ask-sensei-ai-case-analysis)
 - [C27. Branding & Customization](#c27-branding--customization)
-- [C28. Network Admin (UseSense-Internal)](#c28-network-admin-usesense-internal)
+- [C28. Network Admin (Sense-Internal)](#c28-network-admin-sense-internal)
 - [C29. Cross-Platform Consistency](#c29-cross-platform-consistency)
 - [C30. Non-Functional Requirements](#c30-non-functional-requirements)
 - [Appendix A: Canonical event vocabulary](#appendix-a-canonical-event-vocabulary)
@@ -80,7 +80,7 @@ Every capability, story, and AC below corresponds to behavior present in the cod
 | **Org Owner / Admin** | Customer operator. Manages team, billing, settings, SSO. |
 | **Developer (Watchtower role)** | Customer operator with API/webhook scope but no fraud-ops scope. |
 | **Viewer** | Read-only Watchtower role. |
-| **Network Admin** | UseSense-internal operator. Manages every customer organization. |
+| **Network Admin** | Sense-internal operator. Manages every customer organization. |
 | **SenSei AI** | The AI/orchestration layer; appears as a "system actor" in some flows. |
 
 ---
@@ -127,7 +127,7 @@ Every capability, story, and AC below corresponds to behavior present in the cod
 ### C1.SC1. SDK Installation
 
 #### C1.SC1.E1. Multi-channel distribution
-**User story** — As a Mobile Developer, I want to install the UseSense SDK from my platform's standard package manager, so that I do not need custom build tooling.
+**User story** — As a Mobile Developer, I want to install the Sense SDK from my platform's standard package manager, so that I do not need custom build tooling.
 
 **AC**
 - iOS SDK installs via CocoaPods (`pod 'UseSenseSDK', '~> 4.2'`) without manual XCFramework handling.
@@ -290,7 +290,7 @@ Every capability, story, and AC below corresponds to behavior present in the cod
 ### C3.SC2. Identity swap detection
 
 #### C3.SC2.E1. Cross-identity collision on authentication
-**User story** — As a Risk Manager, I want UseSense to detect when a returning user's face matches a *different* identity, so that I catch identity-takeover attempts.
+**User story** — As a Risk Manager, I want Sense to detect when a returning user's face matches a *different* identity, so that I catch identity-takeover attempts.
 
 **AC**
 - 1:N scan runs in parallel with 1:1 verification.
@@ -920,7 +920,7 @@ Every capability, story, and AC below corresponds to behavior present in the cod
 ### C16.SC1. Ring formation
 
 #### C16.SC1.E1. Automatic ring detection
-**User story** — As a Fraud Analyst, I want UseSense to surface coordinated fraud rings automatically, so that I see the bigger picture beyond individual sessions.
+**User story** — As a Fraud Analyst, I want Sense to surface coordinated fraud rings automatically, so that I see the bigger picture beyond individual sessions.
 
 **AC**
 - Rings are formed by detecting connected identities via face / metadata / device / IP matches.
@@ -1314,15 +1314,15 @@ Every capability, story, and AC below corresponds to behavior present in the cod
 
 ---
 
-## C28. Network Admin (UseSense-Internal)
+## C28. Network Admin (Sense-Internal)
 
 ### C28.SC1. Multi-org operator console
 
 #### C28.SC1.E1. Network dashboard
 **AC**
-- `/network/login` separate auth flow for UseSense ops staff.
+- `/network/login` separate auth flow for Sense ops staff.
 - `/network` shows all customer organizations.
-- `/network/organisations/:orgId` allows UseSense staff to inspect and adjust per-org config, billing, feature flags.
+- `/network/organisations/:orgId` allows Sense staff to inspect and adjust per-org config, billing, feature flags.
 
 **NAC**
 - Customer users MUST NOT have access to `/network/*` routes.

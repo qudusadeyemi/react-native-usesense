@@ -1,12 +1,12 @@
-# UseSense React Native Integration Guide
+# Sense React Native Integration Guide
 
 ## How Verification Works
 
-1. Your app initializes the UseSense plugin with your API key
+1. Your app initializes the Sense plugin with your API key
 2. Call `UseSense.startSession()` when you need to verify a user
 3. The plugin launches a native full-screen camera UI (iOS: UIViewController modal, Android: Activity)
 4. The user completes a short challenge (5-15 seconds)
-5. The native SDK captures frames, sensor data, and optional audio, uploads to UseSense servers
+5. The native SDK captures frames, sensor data, and optional audio, uploads to Sense servers
 6. Server-side analysis runs three pillars (DeepSense, LiveSense, MatchSense) in parallel
 7. The plugin receives a preliminary result — use for UI feedback
 8. The definitive verdict arrives at YOUR BACKEND via HMAC-signed webhook
@@ -42,7 +42,7 @@
 
 ## Why Three Independent Pillars?
 
-Most providers return one composite score that hides individual failures. UseSense takes a different approach:
+Most providers return one composite score that hides individual failures. Sense takes a different approach:
 
 - **DeepSense**, **LiveSense**, and **MatchSense** each score independently (0-100)
 - A critical failure in any pillar cannot be masked by strong scores in others
@@ -162,7 +162,7 @@ The bridge handles threading automatically. `initialize()` and `startSession()` 
 
 ### Step 1: Configure the Webhook Endpoint
 
-1. Go to [UseSense dashboard](https://watchtower.usesense.ai) > Settings > Webhooks
+1. Go to [Sense dashboard](https://watchtower.usesense.ai) > Settings > Webhooks
 2. Add your endpoint URL (e.g., `https://api.yourapp.com/webhooks/usesense`)
 3. Copy the signing secret
 
@@ -319,7 +319,7 @@ Server: webhook.session_id === "ses_abc123" → grant access in database
 
 - [ ] Switch `environment` to `'production'` in `UseSenseConfig`
 - [ ] Use production API key (separate from sandbox)
-- [ ] Purchase credits in [UseSense dashboard](https://watchtower.usesense.ai)
+- [ ] Purchase credits in [Sense dashboard](https://watchtower.usesense.ai)
 - [ ] Configure production webhook endpoint
 - [ ] Implement webhook signature verification on your server
 - [ ] Test full flow on physical devices (both iOS and Android)

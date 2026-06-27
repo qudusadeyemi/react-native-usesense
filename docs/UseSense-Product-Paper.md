@@ -1,6 +1,6 @@
-# UseSense — Product Paper
+# Sense — Product Paper
 
-*A reference document for the UseSense marketing team. Built from a full audit of the product workspace (mobile SDKs, web SDK, Flutter SDK, Watchtower dashboard + backend) — every feature listed exists in code today unless explicitly marked as roadmap.*
+*A reference document for the Sense marketing team. Built from a full audit of the product workspace (mobile SDKs, web SDK, Flutter SDK, Watchtower dashboard + backend) — every feature listed exists in code today unless explicitly marked as roadmap.*
 
 ---
 
@@ -29,11 +29,11 @@
 
 ## 1. Executive summary
 
-**UseSense is a presence-verification platform.** It answers a single, deceptively hard question every time a digital service interacts with a user:
+**Sense is a presence-verification platform.** It answers a single, deceptively hard question every time a digital service interacts with a user:
 
 > *Is there a real, live, unique human on the other side of this camera right now — and are they who they claim to be?*
 
-UseSense answers it by combining **four independent verification systems** — **DeepSense** (device & channel integrity), **LiveSense** (multimodal proof-of-life), **MatchSense** (identity collision detection), and **SenSei** (adaptive policy + AI orchestration) — into a single SDK-driven session that returns a cryptographically signed, server-side verdict (`APPROVE` / `REJECT` / `MANUAL_REVIEW` / `STEP_UP_REQUIRED`) to the customer's backend.
+Sense answers it by combining **four independent verification systems** — **DeepSense** (device & channel integrity), **LiveSense** (multimodal proof-of-life), **MatchSense** (identity collision detection), and **SenSei** (adaptive policy + AI orchestration) — into a single SDK-driven session that returns a cryptographically signed, server-side verdict (`APPROVE` / `REJECT` / `MANUAL_REVIEW` / `STEP_UP_REQUIRED`) to the customer's backend.
 
 The product ships as:
 
@@ -41,7 +41,7 @@ The product ships as:
 - **Watchtower** — a full-featured operator dashboard with sessions explorer, identity graph, manual review queue, fraud-ring detection, custom rules engine, custom report builder, blocklist management, RBAC, SSO, audit log, and Stripe-powered billing.
 - **A backend verification engine** with HMAC-SHA256 signed webhooks, REST API, ML services (FLAME 3D face fitting, stereo reconstruction), and an embedded AI assistant (SenSei) for case analysis.
 
-UseSense is built for the post-deepfake, post-injection-attack era of digital identity, where the threat is no longer a stolen password — it is a synthetic face, a virtualized camera, a tampered device, or a coordinated fraud ring pretending to be a hundred different people.
+Sense is built for the post-deepfake, post-injection-attack era of digital identity, where the threat is no longer a stolen password — it is a synthetic face, a virtualized camera, a tampered device, or a coordinated fraud ring pretending to be a hundred different people.
 
 ---
 
@@ -77,7 +77,7 @@ The first generation of identity vendors (Jumio, Onfido, Veriff, Persona, Socure
 3. **No cross-customer view.** Each vendor verifies in isolation. A synthetic identity rejected by Bank A is happily enrolled by Bank B 30 minutes later.
 4. **No ring-level intelligence.** Per-session verification cannot see that fifty "different users" are actually one fraud ring sharing devices, IPs, and metadata patterns.
 
-UseSense was built specifically to solve all four problems.
+Sense was built specifically to solve all four problems.
 
 ---
 
@@ -85,7 +85,7 @@ UseSense was built specifically to solve all four problems.
 
 ### 3.1 Product positioning
 
-> **UseSense is the presence-verification layer for the deepfake era.**
+> **Sense is the presence-verification layer for the deepfake era.**
 > Four independent pillars, server-side scoring, a fraud-ring graph, and a customer-tunable rules engine — delivered as a drop-in SDK with a full operator dashboard.
 
 We do not position as another KYC vendor. We complement them. A typical deployment is:
@@ -96,7 +96,7 @@ We do not position as another KYC vendor. We complement them. A typical deployme
          Persona, etc.)         detection + rules + signed verdict)      decision)
 ```
 
-Customers keep their existing KYC vendor for document parsing and use UseSense as the **trust anchor for the human behind the device** — at enrollment, at re-authentication, at high-value transaction step-up, and at any moment they need fresh proof that the same real person is still there.
+Customers keep their existing KYC vendor for document parsing and use Sense as the **trust anchor for the human behind the device** — at enrollment, at re-authentication, at high-value transaction step-up, and at any moment they need fresh proof that the same real person is still there.
 
 ### 3.2 What makes the architecture defensible
 
@@ -124,7 +124,7 @@ Customers keep their existing KYC vendor for document parsing and use UseSense a
 
 ### 4.2 Verticals & use cases
 
-| Vertical | Use case | Why UseSense |
+| Vertical | Use case | Why Sense |
 |---|---|---|
 | **Banking & fintech** | Account opening, high-value transfer step-up, card activation | Stops synthetic-identity fraud at enrollment; rules engine encodes the regulator-defensible policy; signed webhook is the audit record |
 | **Crypto exchanges** | KYC, withdrawal authorization, recovery flows | Hardest-hit by deepfake fraud; needs the strongest possible PAD and fraud-ring detection |
@@ -143,7 +143,7 @@ Designed and tested for: North America, EU, UK, Nigeria, Kenya, South Africa, In
 
 ## 5. The four pillars
 
-Every UseSense session is scored independently by four systems. A session is approved only when their combined verdict crosses the customer's threshold; disagreement routes to `MANUAL_REVIEW`. This defense-in-depth is the technical core of the product.
+Every Sense session is scored independently by four systems. A session is approved only when their combined verdict crosses the customer's threshold; disagreement routes to `MANUAL_REVIEW`. This defense-in-depth is the technical core of the product.
 
 ### 5.1 DeepSense — Channel & Device Integrity
 
@@ -352,7 +352,7 @@ Android codes additionally carry numeric identifiers (e.g. `1001` camera unavail
 
 ## 8. Product surface — Watchtower
 
-**Watchtower** (currently v4.0.6, hosted at `watchtower.usesense.ai`) is the operator-facing application. It is where customers configure, monitor, triage, and audit UseSense day-to-day.
+**Watchtower** (currently v4.0.6, hosted at `watchtower.usesense.ai`) is the operator-facing application. It is where customers configure, monitor, triage, and audit Sense day-to-day.
 
 ### 8.1 Frontend areas (full sitemap)
 
@@ -403,7 +403,7 @@ Android codes additionally carry numeric identifiers (e.g. `1001` camera unavail
 - `/help`, `/help-documentation`, `/developer-docs`
 - `/test/biometric`, `/test/sdk-api`, `/test/sdk-diagnostic`, `/test/deployment-status`, `/test/cors` — interactive integration testing
 
-**Network admin (separate auth, for UseSense operators)**
+**Network admin (separate auth, for Sense operators)**
 - `/network` — multi-org operator console
 - `/network/organisations/:orgId` — per-org operator management
 
@@ -497,8 +497,8 @@ Compliance-grade trail (monthly partitioned for performance):
 - **Conversation threads** preserved per case
 - **AI allowance** quota — 1 SenSei query per 10 verification credits
 
-#### Network admin panel (UseSense-internal)
-A separate authenticated console for the UseSense operations team to manage every customer organization, billing config, feature flags, and emergency interventions.
+#### Network admin panel (Sense-internal)
+A separate authenticated console for the Sense operations team to manage every customer organization, billing config, feature flags, and emergency interventions.
 
 ### 8.3 Watchtower-only capabilities (not visible from the SDK)
 
@@ -789,7 +789,7 @@ A consolidated, named list for marketing copy. Every item below is implemented i
 
 ### 14.1 The three-line pitch
 
-> Identity verification was built for the password era. UseSense is built for the deepfake era. Four independent verification systems — device integrity, multimodal liveness, identity-collision detection, and an adaptive AI policy layer — deliver a signed, server-side verdict that no patched client and no generative model can fake, plus a fraud-ring graph that catches the coordinated attacks single-session vendors miss.
+> Identity verification was built for the password era. Sense is built for the deepfake era. Four independent verification systems — device integrity, multimodal liveness, identity-collision detection, and an adaptive AI policy layer — deliver a signed, server-side verdict that no patched client and no generative model can fake, plus a fraud-ring graph that catches the coordinated attacks single-session vendors miss.
 
 ### 14.2 Competitive frame
 
@@ -798,7 +798,7 @@ A consolidated, named list for marketing copy. Every item below is implemented i
 | **Onfido / Jumio / Veriff** | Document KYC + bolt-on liveness | We're complementary, not competitive — we layer on as the presence-trust anchor. Stronger on deepfake/injection. Customers run both. |
 | **iProov** | Liveness specialist | Single-pillar; we add DeepSense, MatchSense, fraud-ring detection, and a rules engine. |
 | **FaceTec** | Liveness SDK | Same — single-pillar, no identity graph, no operator dashboard. |
-| **Persona** | KYC orchestration | We're a node inside their orchestration, not a competitor. Persona customers can call UseSense as a workflow step. |
+| **Persona** | KYC orchestration | We're a node inside their orchestration, not a competitor. Persona customers can call Sense as a workflow step. |
 | **AU10TIX / Incode** | Full-stack KYC | We're stronger on deepfake/injection and on coordinated fraud rings. We win in step-up, re-auth, and any flow where the attacker has an ID copy. |
 
 ### 14.3 What we are *not*
@@ -858,7 +858,7 @@ Surfaced from feature flags, TODOs, and partial implementations in the codebase.
 
 ## 17. Glossary
 
-- **Presence verification** — UseSense's category. The verification that a real, live, unique human is behind the camera. Use this term in preference to "liveness" or "biometric KYC".
+- **Presence verification** — Sense's category. The verification that a real, live, unique human is behind the camera. Use this term in preference to "liveness" or "biometric KYC".
 - **Pillar** — one of the four independent scoring systems (DeepSense, LiveSense, MatchSense, SenSei).
 - **Session** — a single end-to-end verification attempt.
 - **Verdict** — the server-side decision (`APPROVE` / `REJECT` / `MANUAL_REVIEW` / `STEP_UP_REQUIRED`) plus pillar scores.

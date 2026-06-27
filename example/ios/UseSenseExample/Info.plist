@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>UseSense Example</string>
+	<string>Sense Example</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -33,9 +33,9 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>UseSense needs camera access to verify your identity.</string>
+	<string>Sense needs camera access to verify your identity.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>UseSense needs microphone access for voice verification challenges.</string>
+	<string>Sense needs microphone access for voice verification challenges.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>UILaunchStoryboardName</key>

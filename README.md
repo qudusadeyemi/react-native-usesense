@@ -1,9 +1,9 @@
-# UseSense React Native
+# Sense React Native
 
 React Native plugin for human presence verification. Wraps the native
-UseSense iOS and Android SDKs into a single cross-platform package.
+Sense iOS and Android SDKs into a single cross-platform package.
 
-UseSense verifies that a real human — not a bot, deepfake, or replay
+Sense verifies that a real human — not a bot, deepfake, or replay
 attack — is behind the camera during identity verification sessions.
 Three independent pillars run in parallel on every session:
 
@@ -47,22 +47,22 @@ yarn add react-native-usesense
 cd ios && pod install
 ```
 
-The native UseSense iOS SDK is installed automatically as a CocoaPod
+The native Sense iOS SDK is installed automatically as a CocoaPod
 dependency from the public CocoaPods trunk (`UseSenseSDK`, pinned to
 `~> 4.2`). Add required permissions to your `Info.plist`:
 
 ```xml
 <key>NSCameraUsageDescription</key>
-<string>UseSense needs camera access to verify your identity.</string>
+<string>Sense needs camera access to verify your identity.</string>
 
 <!-- Only if your verification flow includes audio challenges -->
 <key>NSMicrophoneUsageDescription</key>
-<string>UseSense needs microphone access for voice verification.</string>
+<string>Sense needs microphone access for voice verification.</string>
 ```
 
 ### Android setup
 
-The native UseSense Android SDK is pulled automatically from Maven
+The native Sense Android SDK is pulled automatically from Maven
 Central (`ai.usesense:sdk:4.2.1`). `mavenCentral()` is in every
 Android project by default, so no custom repository declaration is
 needed.
@@ -125,7 +125,7 @@ try {
 The verification flow UI is fully customizable through two optional inputs you pass
 on a flow run: `appearance` (`FlowAppearance`) and `copy` (`FlowCopy`). Values are
 merged **SDK-init > dashboard (org settings) > built-in default**. Every field is
-optional; anything you omit keeps the UseSense default.
+optional; anything you omit keeps the Sense default.
 
 You can set this two ways: in code (below), or no-code via the dashboard's
 **Flows → Appearance** tab (saved on your org, delivered to every SDK and the hosted

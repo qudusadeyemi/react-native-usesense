@@ -950,7 +950,7 @@ PODS:
     - glog
     - RCT-Folly (= 2022.05.16.00)
     - React-Core
-    - UseSenseSDK (~> 4.4)
+    - UseSenseSDK (~> 4.5)
   - React-nativeconfig (0.73.11)
   - React-NativeModulesApple (0.73.11):
     - glog
@@ -1126,9 +1126,9 @@ PODS:
     - React-Core
     - React-RCTImage
   - SocketRocket (0.6.1)
-  - UseSenseMediaPipe (4.4.1)
-  - UseSenseSDK (4.4.1):
-    - UseSenseMediaPipe (= 4.4.1)
+  - UseSenseMediaPipe (4.5.0)
+  - UseSenseSDK (4.5.0):
+    - UseSenseMediaPipe (= 4.5.0)
   - Yoga (1.14.0)
 
 DEPENDENCIES:
@@ -1376,7 +1376,7 @@ SPEC CHECKSUMS:
   React-logger: 6e4873d1f9c54cca30f6c91a6617f8c91b75ba4c
   React-Mapbuffer: 57bf49a458398d329dad2bf8bc660e3e35b96989
   react-native-safe-area-context: 758e894ca5a9bd1868d2a9cfbca7326a2b6bf9dc
-  react-native-usesense: f43e179bf41719704419003fe3fa19e4092dfe57
+  react-native-usesense: 83c1e2d4b64986d6d5964e651362669151c71941
   React-nativeconfig: 8fd29a35a3e4e8c37682d976667663d834ba6165
   React-NativeModulesApple: 83d7077877f8eda8e1b6055b3f8f16f7db8463b5
   React-perflogger: 3887a05940ccd34a83457fd153fdeda509b31737
@@ -1400,10 +1400,10 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: b44e8a4e798c3e1f56bffccd0f591f674fb9198f
   RNScreens: 3ce54903891fd6281865ad3e7cfe4c2bb438c70c
   SocketRocket: f32cd54efbe0f095c4d7594881e52619cfe80b17
-  UseSenseMediaPipe: 817ff90f2b8ca68f4b250ded547ae65934d7548b
-  UseSenseSDK: 5a09cfc7608699e549d10566b74156a94c0b7382
+  UseSenseMediaPipe: 378c01621da1a19a79e35598d4a0e389c8ea72cb
+  UseSenseSDK: 95ad0fa2ac7efc718dbac892bf621bca9a6669fe
   Yoga: a813a6d82538ccba91c54406404e3ed80b48a692
 
-PODFILE CHECKSUM: f602600a9a730be96c85d76d7bc0fcac69e67fcb
+PODFILE CHECKSUM: 93414a2b114787bea2fb5555fab049066e55c2ad
 
 COCOAPODS: 1.16.2

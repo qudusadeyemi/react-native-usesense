@@ -32,15 +32,9 @@ end
 target 'UseSenseExample' do
   config = use_native_modules!
 
-  # INTERIM (white-label): the appearance/copy API the bridge calls
-  # (FlowAppearance/FlowCopy + UseSenseFlows.run(appearance:copy:)) is on the iOS
-  # SDK's main branch but NOT yet in a published CocoaPods release -- trunk's latest
-  # is 4.4.1, which predates the white-label work. Track main so this example/CI
-  # compiles the bridge against the API it targets. REMOVE once UseSenseSDK is
-  # published WITH the appearance/copy API and the plugin podspec is bumped to that
-  # version; until then a real consumer's `pod install` resolves the old trunk pod
-  # and the bridge will not build.
-  pod 'UseSenseSDK', :git => 'https://github.com/qudusadeyemi/usesense-ios-sdk.git', :branch => 'main'
+  # UseSenseSDK resolves from the plugin podspec's `~> 4.5` constraint against
+  # CocoaPods trunk (4.5.0 ships the white-label appearance/copy API the bridge
+  # calls). No git override needed.
 
   use_react_native!(
     :path => config[:reactNativePath],

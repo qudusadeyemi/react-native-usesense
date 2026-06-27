@@ -4,6 +4,21 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-06-27
+
+### Added
+
+- **White-label appearance + copy.** `UseSenseFlows.runFlow` accepts optional
+  `appearance` (FlowAppearance) and `copy` (FlowCopy) overrides, forwarded through
+  the iOS and Android bridges to the native `UseSenseFlows.run` so the verification
+  flow's look and subject-facing copy can be customised from the SDK or the dashboard.
+
+### Changed
+
+- **Pinned UseSenseSDK to 4.5.0** (iOS `~> 4.5`, Android `ai.usesense:sdk:4.5.0`),
+  which ships the appearance/copy API the bridge calls. Earlier 4.4.x releases
+  predate it.
+
 ## [2.1.1] - 2026-06-23
 
 ### Fixed

@@ -4,6 +4,14 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.1] - 2026-06-28
+
+### Changed
+
+- **Pinned native SDK to 4.6.0** (iOS `~> 4.6`, Android `ai.usesense:sdk:4.6.0`).
+  The Android dependency was hard-pinned to the old `4.5.0`; this bumps it to
+  4.6.0 to match the iOS pod and ships the Sense rebrand footers.
+
 ## [2.2.0] - 2026-06-27
 
 ### Added

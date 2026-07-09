@@ -152,6 +152,11 @@ jobs:
           # Kotlin Gradle Plugin to match the SDK. Integrators on RN 0.76+ must
           # set the same `kotlinVersion` in android/build.gradle.
           sed -i -E 's/kotlinVersion = "[0-9.]+"/kotlinVersion = "2.2.10"/' android/build.gradle
+          # Disable the New Architecture for this guard: our native module is a
+          # plain (old-arch) module with no Fabric/TurboModule C++, so New Arch
+          # only adds a CMake/NDK codegen build we don't exercise. This keeps the
+          # guard focused on the Kotlin/manifest layer where SDK issues surface.
+          sed -i -E 's/newArchEnabled=true/newArchEnabled=false/' android/gradle.properties
 
       - name: Build release APK
         run: |

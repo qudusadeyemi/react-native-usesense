@@ -4,6 +4,11 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.4] - 2026-07-09
+
+### Changed
+- Bumped the native SDK pin to `ai.usesense:sdk:4.6.4`, which drops an unused `viewBinding` that had forced `kotlin-stdlib` to 2.2.10 onto consumers. **The `kotlin-stdlib` `resolutionStrategy` force from 2.3.3 is no longer needed** — remove it. The only remaining Android requirement is `minSdkVersion 28`.
+
 ## [2.3.3] - 2026-07-09
 
 ### Fixed

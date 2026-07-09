@@ -150,18 +150,14 @@ jobs:
           # plain (old-arch) module with no Fabric/TurboModule C++, so New Arch
           # only adds a CMake/NDK codegen build we don't exercise.
           sed -i -E 's/newArchEnabled=true/newArchEnabled=false/' android/gradle.properties
-          # kotlin-stdlib force to 2.0.21. ai.usesense:sdk 4.6.3 already pins its
-          # OWN stdlib to 2.0.21, but something in RN's own dependency graph still
-          # requests 2.2.10 (metadata 2.2.0), which Gradle resolves onto the whole
-          # app — unreadable by RN 0.76's Kotlin 1.9 compiler. A blanket force is
-          # the only thing that catches every requester. Integrators on RN 0.76
-          # must apply the same force in their app/build.gradle.
-          {
-            echo ''
-            echo 'allprojects { configurations.all { resolutionStrategy.eachDependency {'
-            echo "  if (requested.group == 'org.jetbrains.kotlin' && requested.name.startsWith('kotlin-stdlib')) { useVersion '2.0.21' }"
-            echo '} } }'
-          } >> android/build.gradle
+          # NOTE: no kotlin-stdlib force needed. ai.usesense:sdk >= 4.6.4 dropped
+          # its unused viewBinding, which had dragged in the stdlib 2.2.10
+          # constraint; consumers now resolve the SDK's kotlin-stdlib 2.0.21
+          # (readable by RN's Kotlin 1.9) with no app-side workaround. minSdk 28
+          # above is the ONLY app-side requirement. If this ever regresses to a
+          # "kotlin.Unit … incompatible version" error, run:
+          #   ./gradlew :react-native-usesense:dependencyInsight \
+          #     --configuration releaseCompileClasspath --dependency kotlin-stdlib
 
       - name: Build release APK
         run: |

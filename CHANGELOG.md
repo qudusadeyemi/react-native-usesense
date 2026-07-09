@@ -4,7 +4,14 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
-## [2.3.4] - 2026-07-09
+## [2.3.5] - 2026-07-10
+
+### Fixed
+- **iOS: `startVerification` / `reset` / `isInitialized` silently failed.** The Objective-C bridge (`UseSenseModule.m`) had drifted from the Swift implementation — it exported `startSession` / `getSdkVersion` / etc. (which don't exist in the Swift) and omitted the methods JS actually calls. Rewrote the bridge to mirror the Swift 1:1, so the Sessions API works on iOS.
+- **New Architecture build failure.** `package.json` declared a `codegenConfig` with no accompanying codegen spec files, so building a consumer app with the New Architecture enabled failed at the C++ codegen link step (`Cannot specify link libraries for target react_codegen_RNUseSenseSpec`). Removed the inert config; the plugin now builds cleanly under both architectures via RN's legacy interop layer.
+
+### Verified
+- New Architecture support. CI now builds a fresh RN app with the New Architecture **enabled** in addition to the Old-Architecture release build. The plugin is a native bridge module run under New Arch via interop — not a native TurboModule, which isn't required.
 
 ### Changed
 - Bumped the native SDK pin to `ai.usesense:sdk:4.6.4`, which drops an unused `viewBinding` that had forced `kotlin-stdlib` to 2.2.10 onto consumers. **The `kotlin-stdlib` `resolutionStrategy` force from 2.3.3 is no longer needed** — remove it. The only remaining Android requirement is `minSdkVersion 28`.

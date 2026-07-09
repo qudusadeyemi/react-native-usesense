@@ -89,13 +89,16 @@ Without it, a release build fails at manifest merge
 
 ### New Architecture
 
-For projects on the Old Architecture (Bridge), the plugin works
-unchanged — this is the path exercised by the Android release-build CI.
+The plugin works on **both** the New Architecture and the Old (Bridge)
+Architecture, with no configuration difference. It's a native bridge
+module, and RN's built-in legacy interop layer (on by default since RN
+0.74) runs it transparently under the New Architecture — you don't need
+to enable or change anything.
 
-> **New Architecture:** the plugin is written to support Turbo Modules,
-> but the Android release-build CI currently validates only the Old
-> Architecture path. If you build with the New Architecture enabled and
-> hit an issue, please file it.
+CI verifies both paths on every change: one job builds a release APK on
+the Old Architecture, another builds a fresh RN app with the New
+Architecture enabled. (It is not a native TurboModule — that migration
+isn't required for New-Arch support and isn't currently planned.)
 
 ## Quick start
 

@@ -74,34 +74,18 @@ Add required permissions to your `AndroidManifest.xml`:
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 ```
 
-**Two Gradle settings are required** (auto-linking handles module
-registration, but these are needed for the native SDK to resolve and
-build in release). In your app's `android/build.gradle`:
+**One Gradle setting is required** (auto-linking handles module
+registration). The native SDK requires Android API 28 — set it in your
+app's `android/build.gradle`:
 
 ```groovy
-// 1. The native SDK requires Android API 28.
 ext {
     minSdkVersion = 28
 }
-
-// 2. The SDK is built with Kotlin 2.2; React Native's Kotlin 1.9
-//    toolchain can't read 2.2 metadata. Force kotlin-stdlib to a
-//    1.9-readable version. (Not needed once RN ships Kotlin >= 2.2.)
-allprojects {
-    configurations.all {
-        resolutionStrategy.eachDependency {
-            if (requested.group == 'org.jetbrains.kotlin' &&
-                requested.name.startsWith('kotlin-stdlib')) {
-                useVersion '2.0.21'
-            }
-        }
-    }
-}
 ```
 
-Without these, a release build fails at manifest merge
-(`minSdkVersion … cannot be smaller than 28`) or Kotlin compile
-(`Class 'kotlin.Unit' was compiled with an incompatible version`).
+Without it, a release build fails at manifest merge
+(`minSdkVersion … cannot be smaller than 28`).
 
 ### New Architecture
 

@@ -63,9 +63,8 @@ dependency from the public CocoaPods trunk (`UseSenseSDK`, pinned to
 ### Android setup
 
 The native Sense Android SDK is pulled automatically from Maven
-Central (`ai.usesense:sdk:4.2.1`). `mavenCentral()` is in every
-Android project by default, so no custom repository declaration is
-needed.
+Central (`ai.usesense:sdk`). `mavenCentral()` is in every Android
+project by default, so no custom repository declaration is needed.
 
 Add required permissions to your `AndroidManifest.xml`:
 
@@ -75,15 +74,44 @@ Add required permissions to your `AndroidManifest.xml`:
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 ```
 
-Auto-linking handles registration; no additional Gradle configuration
-needed.
+**Two Gradle settings are required** (auto-linking handles module
+registration, but these are needed for the native SDK to resolve and
+build in release). In your app's `android/build.gradle`:
+
+```groovy
+// 1. The native SDK requires Android API 28.
+ext {
+    minSdkVersion = 28
+}
+
+// 2. The SDK is built with Kotlin 2.2; React Native's Kotlin 1.9
+//    toolchain can't read 2.2 metadata. Force kotlin-stdlib to a
+//    1.9-readable version. (Not needed once RN ships Kotlin >= 2.2.)
+allprojects {
+    configurations.all {
+        resolutionStrategy.eachDependency {
+            if (requested.group == 'org.jetbrains.kotlin' &&
+                requested.name.startsWith('kotlin-stdlib')) {
+                useVersion '2.0.21'
+            }
+        }
+    }
+}
+```
+
+Without these, a release build fails at manifest merge
+(`minSdkVersion … cannot be smaller than 28`) or Kotlin compile
+(`Class 'kotlin.Unit' was compiled with an incompatible version`).
 
 ### New Architecture
 
-The plugin supports React Native's New Architecture (Turbo Modules)
-out of the box. If your project has the New Architecture enabled, the
-plugin uses the Turbo Module path automatically. For projects still on
-the Old Architecture (Bridge), the plugin works unchanged.
+For projects on the Old Architecture (Bridge), the plugin works
+unchanged — this is the path exercised by the Android release-build CI.
+
+> **New Architecture:** the plugin is written to support Turbo Modules,
+> but the Android release-build CI currently validates only the Old
+> Architecture path. If you build with the New Architecture enabled and
+> hit an issue, please file it.
 
 ## Quick start
 

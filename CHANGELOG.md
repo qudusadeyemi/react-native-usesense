@@ -4,6 +4,24 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.3] - 2026-07-09
+
+### Fixed
+- **Android was unbuildable for React Native consumers.** The native `ai.usesense:sdk` was compiled with Kotlin 2.2.10 (metadata + stdlib 2.2.0), which no current RN toolchain (RN 0.76 ships Kotlin 1.9) can read — every RN Android build failed with `Class … was compiled with an incompatible version of Kotlin`. Bumped the pin to `ai.usesense:sdk:4.6.3`, which emits Kotlin 2.0-readable metadata **and** pins its own kotlin-stdlib to 2.0.21, so RN's Kotlin 1.9 toolchain can compile against it with no consumer-side workaround.
+
+### Changed — action required
+Two settings are required in your app's `android/build.gradle` (RN 0.76+):
+- **`ext { minSdkVersion = 28 }`** — the native SDK requires API 28; a lower value fails the release manifest merge.
+- **Force `kotlin-stdlib` to `2.0.21`** — the SDK is built with Kotlin 2.2, and something in RN's Gradle graph resolves the stdlib up to 2.2.10, which RN's Kotlin 1.9 compiler can't read. Add:
+  ```groovy
+  allprojects { configurations.all { resolutionStrategy.eachDependency {
+    if (requested.group == 'org.jetbrains.kotlin' && requested.name.startsWith('kotlin-stdlib')) { useVersion '2.0.21' }
+  } } }
+  ```
+
+### CI
+- Re-enabled the Android build job (disabled since the RN 0.73 / Kotlin incompatibility). It scaffolds a fresh RN 0.76 app, installs this plugin, and builds a **release** APK against the published SDK — the guard that would have caught the above. New Architecture is disabled in the guard (this module is old-arch).
+
 ## [2.3.2] - 2026-07-09
 
 ### Fixed

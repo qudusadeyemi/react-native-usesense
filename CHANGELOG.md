@@ -4,6 +4,14 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.2] - 2026-07-09
+
+### Fixed
+- **Android release builds failing at manifest merge on AGP 8.x** (`Namespace 'org.tensorflow.lite' is used in multiple modules and/or libraries`). Bumped the native SDK pin `ai.usesense:sdk` `4.6.0` → `4.6.1`, which upgrades TensorFlow Lite to 2.16.1 (fixing the duplicate-namespace collision between `tensorflow-lite` and its transitive `tensorflow-lite-api`) and drops the unused `tensorflow-lite-support`. Integrators no longer need a `resolutionStrategy`/`exclude` workaround. No API or runtime change.
+
+### Changed — action required
+- **Minimum Android SDK is now 28** (was declared 24). The native `ai.usesense:sdk` has required `minSdk 28` since v4.1; declaring 24 here failed a consuming app's release manifest merge against the SDK's own minSdk. **Consuming apps must set `minSdkVersion 28`.**
+
 ## [2.3.1] - 2026-06-28
 
 ### Changed

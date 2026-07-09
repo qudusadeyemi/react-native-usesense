@@ -12,7 +12,10 @@ android {
     compileSdkVersion safeExtGet('compileSdkVersion', 34)
 
     defaultConfig {
-        minSdkVersion safeExtGet('minSdkVersion', 24)
+        // 28, matching the native ai.usesense:sdk requirement (minSdk 28 since
+        // SDK v4.1). A lower value fails a consuming app's release manifest merge
+        // against the SDK's own minSdk. Consuming apps must set minSdkVersion 28.
+        minSdkVersion safeExtGet('minSdkVersion', 28)
         targetSdkVersion safeExtGet('targetSdkVersion', 34)
     }
 

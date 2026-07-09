@@ -41,7 +41,7 @@ dependencies {
     // the iOS SDK 4.3.0 the plugin's podspec depends on). mavenCentral()
     // is already in the `repositories` block above, so no custom
     // repository declaration is needed.
-    implementation "ai.usesense:sdk:4.6.0"
+    implementation "ai.usesense:sdk:4.6.1"
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${safeExtGet('kotlinVersion', '2.0.0')}"
 }

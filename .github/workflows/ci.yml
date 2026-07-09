@@ -146,6 +146,12 @@ jobs:
           # ai.usesense:sdk requires minSdk 28; raise the app floor to match so
           # the release manifest merge succeeds (integrators must do the same).
           sed -i -E 's/minSdkVersion = [0-9]+/minSdkVersion = 28/' android/build.gradle
+          # ai.usesense:sdk is compiled with Kotlin 2.2.10 (metadata 2.2.0). RN
+          # 0.76 defaults to Kotlin 1.9.x, whose compiler can only read metadata
+          # up to 2.0.0, so it fails reading the SDK's classes. Bump the app's
+          # Kotlin Gradle Plugin to match the SDK. Integrators on RN 0.76+ must
+          # set the same `kotlinVersion` in android/build.gradle.
+          sed -i -E 's/kotlinVersion = "[0-9.]+"/kotlinVersion = "2.2.10"/' android/build.gradle
 
       - name: Build release APK
         run: |

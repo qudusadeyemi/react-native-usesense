@@ -7,10 +7,13 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 ## [2.3.3] - 2026-07-09
 
 ### Fixed
-- **Android was unbuildable for React Native consumers.** The native `ai.usesense:sdk` was compiled with Kotlin 2.2.10 and emitted metadata 2.2.0, which no current RN toolchain (RN 0.76 ships Kotlin 1.9) can read — every RN Android build failed with `Class 'com.usesense.sdk.UseSense' was compiled with an incompatible version of Kotlin`. Bumped the pin to `ai.usesense:sdk:4.6.2`, which emits Kotlin 2.0-readable metadata. **Set `kotlinVersion` and `minSdkVersion 28` in your app** — on RN 0.76+ the plugin now compiles against the SDK.
+- **Android was unbuildable for React Native consumers.** The native `ai.usesense:sdk` was compiled with Kotlin 2.2.10 (metadata + stdlib 2.2.0), which no current RN toolchain (RN 0.76 ships Kotlin 1.9) can read — every RN Android build failed with `Class … was compiled with an incompatible version of Kotlin`. Bumped the pin to `ai.usesense:sdk:4.6.3`, which emits Kotlin 2.0-readable metadata **and** pins its own kotlin-stdlib to 2.0.21, so RN's Kotlin 1.9 toolchain can compile against it with no consumer-side workaround.
+
+### Changed — action required
+- **Set `minSdkVersion 28`** in your app's `android/build.gradle` (`ext { minSdkVersion = 28 }`). The native SDK requires API 28; a lower value fails the release manifest merge. This is now the *only* app-side requirement (RN 0.76+).
 
 ### CI
-- Re-enabled the Android build job (disabled since the RN 0.73 / Kotlin incompatibility). It now scaffolds a fresh RN app, installs this plugin, and builds a **release** APK against the published SDK — the guard that would have caught the above.
+- Re-enabled the Android build job (disabled since the RN 0.73 / Kotlin incompatibility). It scaffolds a fresh RN 0.76 app, installs this plugin, and builds a **release** APK against the published SDK — the guard that would have caught the above. New Architecture is disabled in the guard (this module is old-arch).
 
 ## [2.3.2] - 2026-07-09
 

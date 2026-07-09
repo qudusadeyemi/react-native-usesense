@@ -150,19 +150,11 @@ jobs:
           # plain (old-arch) module with no Fabric/TurboModule C++, so New Arch
           # only adds a CMake/NDK codegen build we don't exercise.
           sed -i -E 's/newArchEnabled=true/newArchEnabled=false/' android/gradle.properties
-          # ai.usesense:sdk 4.6.2 emits Kotlin 2.0-readable *metadata*, but still
-          # pulls kotlin-stdlib 2.2.10 (metadata 2.2.0), and Gradle resolves the
-          # whole app to that highest version — which RN 0.76's Kotlin 1.9 compiler
-          # cannot read ("Class 'kotlin.Unit' … incompatible version of Kotlin").
-          # Force the stdlib down to 2.0.21 (metadata 2.0.0, readable by 1.9); the
-          # SDK targets apiVersion 2.0 so it needs no newer stdlib API. Integrators
-          # on RN 0.76 must apply the same force in their app/build.gradle.
-          {
-            echo ''
-            echo 'allprojects { configurations.all { resolutionStrategy.eachDependency {'
-            echo "  if (requested.group == 'org.jetbrains.kotlin' && requested.name.startsWith('kotlin-stdlib')) { useVersion '2.0.21' }"
-            echo '} } }'
-          } >> android/build.gradle
+          # NOTE: no kotlin-stdlib force is needed. ai.usesense:sdk >= 4.6.3 pins
+          # its own stdlib to 2.0.21 (metadata readable by RN's Kotlin 1.9), so a
+          # plain install resolves correctly. minSdk 28 above is the only app-side
+          # requirement. If this build ever fails on a "kotlin.Unit … incompatible
+          # version" error again, the SDK's stdlib pin has regressed.
 
       - name: Build release APK
         run: |

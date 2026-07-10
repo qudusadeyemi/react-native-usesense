@@ -1,6 +1,6 @@
 {
   "name": "react-native-usesense",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "description": "React Native plugin for human presence verification. Wraps the native UseSense iOS and Android SDKs.",
   "main": "lib/commonjs/index.js",
   "module": "lib/module/index.js",
@@ -39,8 +39,7 @@
     "biometric",
     "face-verification",
     "deepfake-detection",
-    "presence-verification",
-    "turbo-module"
+    "presence-verification"
   ],
   "repository": {
     "type": "git",
@@ -72,11 +71,6 @@
     "react-native-builder-bob": "^0.23.0",
     "ts-jest": "^29.4.11",
     "typescript": "^5.3.0"
-  },
-  "codegenConfig": {
-    "name": "RNUseSenseSpec",
-    "type": "modules",
-    "jsSrcsDir": "src"
   },
   "react-native-builder-bob": {
     "source": "src",

@@ -164,3 +164,55 @@ jobs:
           set -euxo pipefail
           cd "$RUNNER_TEMP/GuardApp/android"
           ./gradlew assembleRelease --stacktrace
+
+  build-android-newarch:
+    name: Verify New Architecture (interop)
+    # This plugin is an old-architecture bridge module (ReactContextBaseJavaModule
+    # + ReactPackage). RN's New Architecture runs such modules via its legacy
+    # TurboModule interop layer (default-on since RN 0.74), so no TurboModule
+    # migration is needed. This job proves that empirically: scaffold a fresh RN
+    # app with the New Architecture ENABLED (the RN 0.76 default — we do NOT flip
+    # newArchEnabled off), install the plugin, and build. Green = the plugin
+    # compiles, links, and registers under the New Architecture.
+    #
+    # Debug (not release) on purpose: the goal is to exercise the New-Arch build
+    # + module registration, not the release manifest merge (that's the job above).
+    runs-on: ubuntu-latest
+    env:
+      RN_VERSION: '0.76.5'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build and pack the plugin
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+          npm pack
+
+      - name: Scaffold a fresh New-Arch RN app and install the plugin
+        run: |
+          set -euxo pipefail
+          TGZ="$(ls "$GITHUB_WORKSPACE"/react-native-usesense-*.tgz)"
+          cd "$RUNNER_TEMP"
+          npx --yes @react-native-community/cli@latest init GuardAppNewArch \
+            --version "$RN_VERSION" --skip-install --skip-git-init --pm npm
+          cd GuardAppNewArch
+          npm install
+          npm install "$TGZ"
+          sed -i -E 's/minSdkVersion = [0-9]+/minSdkVersion = 28/' android/build.gradle
+          # Do NOT disable the New Architecture — leave RN 0.76's default
+          # (newArchEnabled=true). Assert it's actually on before building.
+          grep -qE '^newArchEnabled=true' android/gradle.properties
+
+      - name: Build (New Architecture enabled)
+        run: |
+          set -euxo pipefail
+          cd "$RUNNER_TEMP/GuardAppNewArch/android"
+          ./gradlew assembleDebug --stacktrace

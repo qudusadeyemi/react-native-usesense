@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   - **Android 4.6.5** — verification could hang forever on "Finalizing Enrollment". The Play Integrity token request had no timeout and the signal upload joined it unbounded, so a Play services call that never settled wedged the whole verification *before the first HTTP request was issued*.
   - **iOS 4.6.1** — a failed document upload tore the runner down and ejected the subject mid-flow; dismissing the scanner or photo picker cancelled the entire verification; full-resolution scans could be rejected as `payload_too_large` after the subject had already done the work.
 
+### Fixed
+- **`package-lock.json` reported the wrong package version.** It had been frozen at `2.0.0` since the 2.0 release while `package.json` advanced through 2.3.3-2.3.5, because release commits bumped `package.json` by hand and never regenerated the lock. `npm ci` installs from the lock, so anyone building from source got a package that reported the wrong version of itself. Resynced, and CI now fails on drift rather than shipping it again.
+
 ## [2.3.5] - 2026-07-10
 
 ### Fixed

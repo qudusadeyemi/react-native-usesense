@@ -4,6 +4,13 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.6] - 2026-07-31
+
+### Changed
+- Bumped the native SDK pins to the releases that fix capture from stalling: `ai.usesense:sdk` `4.6.4` → **`4.6.5`** and `UseSenseSDK` `~> 4.6` → **`~> 4.6.1`**. The iOS constraint was widened by accident: `~> 4.6` resolves any 4.6.x, so an existing `Podfile.lock` happily stayed on 4.6.0. `~> 4.6.1` makes the fix a floor while still allowing future patches. No API or runtime change in this package.
+  - **Android 4.6.5** — verification could hang forever on "Finalizing Enrollment". The Play Integrity token request had no timeout and the signal upload joined it unbounded, so a Play services call that never settled wedged the whole verification *before the first HTTP request was issued*.
+  - **iOS 4.6.1** — a failed document upload tore the runner down and ejected the subject mid-flow; dismissing the scanner or photo picker cancelled the entire verification; full-resolution scans could be rejected as `payload_too_large` after the subject had already done the work.
+
 ## [2.3.5] - 2026-07-10
 
 ### Fixed

@@ -21,6 +21,25 @@ jobs:
           cache: npm
 
       - run: npm ci --ignore-scripts
+
+      # package.json and package-lock.json versions drifted apart for four
+      # releases (the lock sat at 2.0.0 through 2.3.3-2.3.5) because release
+      # commits bumped package.json by hand and never regenerated the lock.
+      # `npm ci` installs from the lock, so a consumer building from source
+      # gets a package that reports the wrong version of itself. Fail the
+      # build instead of shipping that again: fix with
+      # `npm install --package-lock-only`.
+      - name: package.json and lockfile versions agree
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          lock=$(node -p "require('./package-lock.json').version")
+          lockpkg=$(node -p "require('./package-lock.json').packages[''].version")
+          echo "package.json=$pkg  lock.version=$lock  lock.packages['']=$lockpkg"
+          if [ "$pkg" != "$lock" ] || [ "$pkg" != "$lockpkg" ]; then
+            echo "::error::version drift - run 'npm install --package-lock-only' and commit package-lock.json"
+            exit 1
+          fi
+
       - run: npm run build
       - run: npm run typecheck
       - run: npm run lint

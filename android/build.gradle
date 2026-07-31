@@ -39,12 +39,12 @@ dependencies {
     implementation "com.facebook.react:react-native:+"
 
     // UseSense Android SDK — published to Maven Central at
-    // central.sonatype.com/artifact/ai.usesense/sdk. Pinned to 4.3.0,
-    // the release that adds the V4 capture API + Flows runner (matches
-    // the iOS SDK 4.3.0 the plugin's podspec depends on). mavenCentral()
-    // is already in the `repositories` block above, so no custom
-    // repository declaration is needed.
-    implementation "ai.usesense:sdk:4.6.4"
+    // central.sonatype.com/artifact/ai.usesense/sdk. 4.6.5 is the floor:
+    // earlier builds could hang forever on "Finalizing Enrollment" because
+    // the Play Integrity token request had no timeout and the signal upload
+    // joined it unbounded, wedging the verification before a single request
+    // was sent. mavenCentral() is already in the `repositories` block above.
+    implementation "ai.usesense:sdk:4.6.5"
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${safeExtGet('kotlinVersion', '2.0.0')}"
 }

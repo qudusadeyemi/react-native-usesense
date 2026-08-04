@@ -26,8 +26,12 @@ Pod::Spec.new do |s|
   # redaction result type with a completely different UseSenseConfig
   # init signature. See CHANGELOG [2.0.0] for the full rewrite
   # rationale.
-  # 4.6.1 is the floor: earlier 4.6.x tore the runner down on a failed
+  # 4.6.1 raised the floor: earlier 4.6.x tore the runner down on a failed
   # document upload, ejecting the subject mid-flow, and cancelling the
   # scanner or photo picker cancelled the whole verification.
-  s.dependency "UseSenseSDK", "~> 4.6.1"
+  # 4.6.2 is the floor: below it an upload that arrived incomplete was reported
+  # as `provider`, so the runner told a subject holding a perfectly good
+  # document that verification was "temporarily unavailable" and offered a
+  # retry that re-sent identical bytes.
+  s.dependency "UseSenseSDK", "~> 4.6.2"
 end

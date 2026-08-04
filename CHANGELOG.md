@@ -4,6 +4,13 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.7] - 2026-08-04
+
+### Changed
+- Bumped the native SDK pins so an upload that arrives incomplete is no longer reported as an outage: `ai.usesense:sdk` `4.6.5` → **`4.6.6`** and `UseSenseSDK` `~> 4.6.1` → **`~> 4.6.2`**. No API or runtime change in this package.
+  - Both SDKs previously had two outcomes on a document upload failure: `provider` → "Verification is temporarily unavailable", everything else → "please retake it". A file that arrived cut short took the first path, so a subject holding a perfectly good document was told to wait out an outage that was not happening, and the retry re-sent identical bytes. The server now reports `reason: "incomplete"` and carries the instruction in `message`; neither old branch fits it, since nothing upstream is wrong and a retake changes nothing.
+  - **This bump is not required to fix anything in production.** The corruption that produced those failures was server-side, is already fixed, and applies to every installed build without an update. This only improves what the subject is told when an upload genuinely is cut short.
+
 ## [2.3.6] - 2026-07-31
 
 ### Changed

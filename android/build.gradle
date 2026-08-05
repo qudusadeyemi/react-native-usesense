@@ -48,7 +48,10 @@ dependencies {
     // reported as `provider`, so the runner told a subject holding a perfectly
     // good document that verification was "temporarily unavailable" and
     // offered a retry that re-sent identical bytes.
-    implementation "ai.usesense:sdk:4.6.6"
+    // 4.6.7 is the floor: from it the runner reports whether the subject
+    // scanned the document or chose a file, so failure guidance can name an
+    // action they can actually take. Below it the server guesses from config.
+    implementation "ai.usesense:sdk:4.6.7"
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${safeExtGet('kotlinVersion', '2.0.0')}"
 }

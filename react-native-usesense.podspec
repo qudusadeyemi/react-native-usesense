@@ -33,5 +33,8 @@ Pod::Spec.new do |s|
   # as `provider`, so the runner told a subject holding a perfectly good
   # document that verification was "temporarily unavailable" and offered a
   # retry that re-sent identical bytes.
-  s.dependency "UseSenseSDK", "~> 4.6.2"
+  # 4.6.3 is the floor: from it the runner reports whether the subject scanned
+  # the document or chose a file, so failure guidance can name an action they
+  # can actually take. Below it the server has to guess from the step config.
+  s.dependency "UseSenseSDK", "~> 4.6.3"
 end

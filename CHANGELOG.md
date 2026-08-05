@@ -4,6 +4,12 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.8] - 2026-08-05
+
+### Changed
+- Bumped the native SDK pins so the runner reports how the subject supplied the document: `ai.usesense:sdk` `4.6.6` → **`4.6.7`** and `UseSenseSDK` `~> 4.6.2` → **`~> 4.6.3`**. No API or runtime change in this package.
+  - The server tailors document failure guidance to the capture route. "Hold the document still and wait for the camera to focus" is the right instruction for a live scan and meaningless to someone who chose an existing file: the photo already exists, and there is nothing left to hold. Below these versions the runner never said which route was taken, so the server had to guess from the step's configured capture methods, which is only decisive when a step permits exactly one.
+
 ## [2.3.7] - 2026-08-04
 
 ### Changed

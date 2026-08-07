@@ -36,5 +36,15 @@ Pod::Spec.new do |s|
   # 4.6.3 is the floor: from it the runner reports whether the subject scanned
   # the document or chose a file, so failure guidance can name an action they
   # can actually take. Below it the server has to guess from the step config.
-  s.dependency "UseSenseSDK", "~> 4.6.3"
+  # 4.7.0 is the floor: below it the signals upload could not complete on a
+  # slow connection. Frames were encoded at the camera's full 1080x1920 with no
+  # downscale, so a session put 12.9 MB on the wire, against a 30s request
+  # timeout and a 120s URLSession resource timeout. A measured production
+  # session uploaded at 14.6 KB/s, so the transfer was cancelled every time and
+  # the subject just saw a spinner. 4.7.0 caps frames at 960, raises both
+  # timeouts to 300s, gzips the metadata, and emits real upload progress.
+  #
+  # Note `~> 4.7.0` means >= 4.7.0, < 4.8.0. The previous `~> 4.6.3` excluded
+  # 4.7.0 outright, so this pin has to be raised by hand for every native fix.
+  s.dependency "UseSenseSDK", "~> 4.7.0"
 end

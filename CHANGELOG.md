@@ -4,6 +4,15 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.9] - 2026-08-13
+
+### Changed
+- Bumped the native SDK pins to **4.7.1** on both platforms: `ai.usesense:sdk` `4.7.0` → **`4.7.1`** and `UseSenseSDK` `~> 4.7.0` → **`~> 4.7.1`**. No API or runtime change in this package.
+  - **Android 4.7.1 is the release that makes Android verification work at all.** Every API call was addressed to a doubled `/v1/v1/` path, which the server rejects before reading the request body; because the signals upload carries megabytes, that rejection deadlocked instead of erroring, so the subject watched "Finalizing Enrollment" spin forever and nothing reached the server. No Android integration had ever completed a production verification. Anyone on an older pin is still affected.
+  - Android 4.7.1 also un-doubles the front camera preview mirror (CameraX already mirrors it, and a manual flip on top cancelled it, so subjects turned right and saw themselves go left), and both platforms now pass the org's white-label into the capture screens rather than showing default blue on consent, loading and capture.
+  - The iOS pin moves from `~> 4.7.0` to `~> 4.7.1` deliberately. `~> 4.7.0` already *permits* 4.7.1, but it also still permits 4.7.0, so a resolver could pick a build without these fixes. Raising the floor is what guarantees them.
+  - Supersedes the `4.7.0` pin bump that landed without a version or changelog entry.
+
 ## [2.3.8] - 2026-08-05
 
 ### Changed

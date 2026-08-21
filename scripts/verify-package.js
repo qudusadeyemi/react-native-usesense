@@ -17,14 +17,14 @@ try {
     "package-lock.json root package version must match package.json"
   );
 
-  const packResult = JSON.parse(
-    execFileSync(
-      'npm',
-      ['pack', '--ignore-scripts', '--json', '--pack-destination', packDirectory],
-      { cwd: root, encoding: 'utf8' }
-    )
-  )[0];
-  const tarball = path.join(packDirectory, packResult.filename);
+  execFileSync('npm', ['pack', '--ignore-scripts', '--pack-destination', packDirectory], {
+    cwd: root,
+    stdio: 'pipe',
+  });
+  const tarballs = fs.readdirSync(packDirectory).filter((file) => file.endsWith('.tgz'));
+  assert.equal(tarballs.length, 1, 'npm pack must produce exactly one tarball');
+  const filename = tarballs[0];
+  const tarball = path.join(packDirectory, filename);
   const entries = execFileSync('tar', ['-tf', tarball], { encoding: 'utf8' }).trim().split('\n');
   const readPackedFile = (file) =>
     execFileSync('tar', ['-xOf', tarball, `package/${file}`], { encoding: 'utf8' });
@@ -56,7 +56,7 @@ try {
   );
 
   console.log(
-    `Verified ${packResult.filename}: Android 4.7.1 and iOS ~> 4.7.1 contracts are packaged.`
+    `Verified ${filename}: Android 4.7.1 and iOS ~> 4.7.1 contracts are packaged.`
   );
 } finally {
   fs.rmSync(packDirectory, { recursive: true, force: true });

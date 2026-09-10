@@ -4,6 +4,14 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.4.0] - 2026-09-10
+
+### Changed
+- Bumped the Android native SDK pin to **4.8.0**: `ai.usesense:sdk` `4.7.1` → **`4.8.0`**. The iOS pin stays `~> 4.7.1`. No JavaScript API change in this package.
+  - **Android 4.8.0 is the first Android SDK that actually runs face mesh.** Below it the landmarker and 3D fitter were never called, so no Android session ever uploaded a `verification_package`. The UseSense backend now excludes mesh for older Android SDKs and applies your organisation's mesh integrity policy from 4.8.0.
+  - When the package is omitted, Android 4.8.0 reports `verification_package_skip_reason` and the landmarker init result, so a missing package is explained instead of silent.
+  - Minor version bump because Android capture now does more work per frame (MediaPipe landmarking and fitting, off the capture thread, with the upload waiting at most 5s for it).
+
 ## [2.3.9] - 2026-08-13
 
 ### Changed

@@ -26,6 +26,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
     "test": "jest --passWithNoTests",
+    "test:package": "node scripts/verify-package.js",
     "prepare": "bob build",
     "clean": "del-cli lib"
   },

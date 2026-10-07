@@ -46,5 +46,8 @@ Pod::Spec.new do |s|
   #
   # Note `~> 4.7.0` means >= 4.7.0, < 4.8.0. The previous `~> 4.6.3` excluded
   # 4.7.0 outright, so this pin has to be raised by hand for every native fix.
-  s.dependency "UseSenseSDK", "~> 4.7.1"
+  #
+  # 4.8.0 is the floor: it adds server step-up round 2 and the camera-free
+  # Device Trust step. `~> 4.8.0` means >= 4.8.0, < 4.9.0.
+  s.dependency "UseSenseSDK", "~> 4.8.0"
 end

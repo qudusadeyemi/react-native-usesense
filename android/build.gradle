@@ -63,7 +63,11 @@ dependencies {
     // pipeline, so no session uploaded a verification_package and the server
     // could not verify mesh integrity (it now excludes mesh for older Android
     // SDKs and applies the org's mesh policy from 4.8.0).
-    implementation "ai.usesense:sdk:4.8.0"
+    // 4.9.0 is the floor: it adds server step-up round 2 (a second challenge
+    // in the same session when a Step-up rule matches) and the camera-free
+    // Device Trust step. Below it a step-up falls back to manual review and a
+    // Device Trust step is settled from the network alone.
+    implementation "ai.usesense:sdk:4.9.0"
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${safeExtGet('kotlinVersion', '2.0.0')}"
 }

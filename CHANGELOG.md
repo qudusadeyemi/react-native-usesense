@@ -4,6 +4,14 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.0] - 2026-10-08
+
+### Changed
+- Bumped the native SDK pins: `ai.usesense:sdk` `4.8.0` → **`4.9.0`** and `UseSenseSDK` `~> 4.7.1` → **`~> 4.8.0`**. No JavaScript API change in this package.
+  - **Server step-up (round 2).** When one of your Step-up rules matches the uploaded capture, the native SDK runs one more Head Turn or Follow Dot in the same session instead of the session going to manual review.
+  - **Camera-free Device Trust.** A Flow's Device Trust step now checks the device before any camera opens (attestation, emulator/root, app integrity, network) and recommends the face challenge. Older SDKs get a network-only result for that step.
+  - Minor version bump because both native SDKs gain new runtime behaviour.
+
 ## [2.4.0] - 2026-09-10
 
 ### Changed

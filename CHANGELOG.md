@@ -4,6 +4,12 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.2] - 2026-10-09
+
+### Changed
+- Bumped the native SDK pins: `ai.usesense:sdk` `4.9.1` → **`4.9.2`** and `UseSenseSDK` `~> 4.8.1` → **`~> 4.8.2`**. No JS API change.
+  - **The face step reuses Device Trust only on the same device.** The native SDKs now send the device fingerprint (and, on iOS, the App Attest key) when the face step starts, so a Device Trust result from another device isn't reused.
+
 ## [2.5.1] - 2026-10-08
 
 ### Fixed

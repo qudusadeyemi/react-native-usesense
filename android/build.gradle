@@ -69,7 +69,7 @@ dependencies {
     // Device Trust step is settled from the network alone.
     // 4.9.1: capture screens take the org brand colour; a nonce-less
     // Device Trust step is re-read once, then fails cleanly.
-    implementation "ai.usesense:sdk:4.9.1"
+    implementation "ai.usesense:sdk:4.9.2"
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${safeExtGet('kotlinVersion', '2.0.0')}"
 }

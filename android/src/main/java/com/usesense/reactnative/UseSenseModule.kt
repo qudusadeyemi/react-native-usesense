@@ -20,8 +20,10 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
             val b = configMap.getMap("branding")
             BrandingConfig(
                 logoUrl = b?.getString("logoUrl"),
-                primaryColor = b?.getString("primaryColor") ?: "#4F63F5",
-                buttonRadius = if (b?.hasKey("buttonRadius") == true) b.getInt("buttonRadius") else 12,
+                // Unset stays null so the dashboard (Flow, then org) value applies:
+                // code wins only for fields the app actually set.
+                primaryColor = b?.getString("primaryColor"),
+                buttonRadius = if (b?.hasKey("buttonRadius") == true && !b.isNull("buttonRadius")) b.getInt("buttonRadius") else null,
                 fontFamily = b?.getString("fontFamily"),
             )
         } else null

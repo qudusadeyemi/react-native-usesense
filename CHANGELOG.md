@@ -4,6 +4,28 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.6.0] - 2026-11-07
+
+### Fixed
+- **Unset branding no longer hides the dashboard.** When `branding` was passed
+  without `primaryColor` or `buttonRadius`, the wrapper filled in its own
+  values (`#4F63F5`/12 on Android, `#4F7CFF`/10 on iOS), which overrode the
+  colour and radius configured in the dashboard. Unset fields now stay unset.
+
+### Changed
+- Bumped the native SDK pins: `ai.usesense:sdk` `4.9.2` → **`4.11.0`** and
+  `UseSenseSDK` `~> 4.8.2` → **`~> 4.9.0`**.
+  - **Branding: code wins, field by field.** Values set in code beat the
+    dashboard (Flow, then org), which beats the defaults; session mode now gets
+    the dashboard branding too.
+  - **Capture and result screens match across iOS and Android**, with the
+    org's logo on the result and "Powered by Sense" on the capture screens.
+    Inside a Flow the result offers only Done.
+  - **Android: the decision reaches your callback when the person taps the
+    result button** (or leaves the screen), as on iOS.
+  - **Android release builds (R8) no longer crash at the face step.**
+  - **iOS: "Verifying your presence" can no longer spin forever.**
+
 ## [2.5.2] - 2026-10-09
 
 ### Changed

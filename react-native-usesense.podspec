@@ -50,6 +50,8 @@ Pod::Spec.new do |s|
   # 4.8.0 is the floor: it adds server step-up round 2 and the camera-free
   # Device Trust step. `~> 4.8.0` means >= 4.8.0, < 4.9.0.
   # 4.8.1: face-capture screens take the org brand colour; a nonce-less
-  # Device Trust step no longer spins. `~> 4.8.2` means >= 4.8.2, < 4.9.0.
-  s.dependency "UseSenseSDK", "~> 4.8.2"
+  # Device Trust step no longer spins.
+  # 4.9.0: code-wins branding, matching capture/result screens, watchdog fix.
+  # `~> 4.9.0` means >= 4.9.0, < 4.10.0.
+  s.dependency "UseSenseSDK", "~> 4.9.0"
 end

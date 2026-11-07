@@ -47,7 +47,7 @@ jobs:
 
   build-ios:
     name: Build iOS Example
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
@@ -95,7 +95,7 @@ jobs:
       - name: Build iOS example
         working-directory: example/ios
         # CODE_SIGNING_ALLOWED=NO skips signing (CI has no team ID).
-        # `xcbeautify` is preinstalled on the macos-14 runner image and
+        # `xcbeautify` is preinstalled on the macos-15 runner image and
         # is the current-generation replacement for `xcpretty` (which
         # was removed from the image — the first bootstrap run failed
         # with `xcpretty: command not found` / exit 127 at the start

@@ -77,8 +77,10 @@ class UseSenseModule: RCTEventEmitter {
             // ignored here since the iOS SDK doesn't support them.
             brandingConfig = BrandingConfig(
                 logoUrl: b["logoUrl"] as? String,
-                primaryColor: (b["primaryColor"] as? String) ?? "#4F7CFF",
-                buttonRadius: CGFloat((b["buttonRadius"] as? Int) ?? 10),
+                // Unset stays nil so the dashboard (Flow, then org) value applies:
+                // code wins only for fields the app actually set.
+                primaryColor: b["primaryColor"] as? String,
+                buttonRadius: (b["buttonRadius"] as? NSNumber).map { CGFloat($0.doubleValue) },
                 fontFamily: b["fontFamily"] as? String
             )
         }

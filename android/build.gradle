@@ -76,7 +76,11 @@ dependencies {
     // covered-face model (about +15 MB) and BrandingConfig.appearance / copy
     // on every capture screen (BRAND-v1). Below it session mode cannot take
     // appearance or copy at all.
-    implementation "ai.usesense:sdk:4.13.1"
+    // 4.14.0 is the floor: Head Turn and Follow Dot are closed loop (they
+    // judge yaw and pitch, so up / down and vertical dot moves count) and
+    // send step_events v2 (the first move per step) for the server's replay
+    // checks.
+    implementation "ai.usesense:sdk:4.14.0"
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${safeExtGet('kotlinVersion', '2.0.0')}"
 }

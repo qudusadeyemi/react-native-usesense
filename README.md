@@ -49,7 +49,7 @@ cd ios && pod install
 
 The native Sense iOS SDK is installed automatically as a CocoaPod
 dependency from the public CocoaPods trunk (`UseSenseSDK`, pinned to
-`~> 4.11.0`). Add required permissions to your `Info.plist`:
+`~> 4.12.0`). Add required permissions to your `Info.plist`:
 
 ```xml
 <key>NSCameraUsageDescription</key>

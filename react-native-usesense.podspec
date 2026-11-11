@@ -57,5 +57,8 @@ Pod::Spec.new do |s|
   # scan screen, the LiveSense evidence upload (EVIDENCE-v1), the covered-face
   # model (about +16 MB) and BrandingConfig.appearance / copy on every capture
   # screen (BRAND-v1). `~> 4.11.0` means >= 4.11.0, < 4.12.0.
-  s.dependency "UseSenseSDK", "~> 4.11.0"
+  # 4.12.0 is the floor: step_events v2, the first move per Head Turn step
+  # and Follow Dot waypoint, for the server's replay checks.
+  # `~> 4.12.0` means >= 4.12.0, < 4.13.0.
+  s.dependency "UseSenseSDK", "~> 4.12.0"
 end

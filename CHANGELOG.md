@@ -4,6 +4,24 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.8.0] - 2026-11-11
+
+### Changed
+- Bumped the native SDK pins: `ai.usesense:sdk` `4.13.1` → **`4.14.0`** and
+  `UseSenseSDK` `~> 4.11.0` → **`~> 4.12.0`** (>= 4.12.0, < 4.13.0).
+  - **Challenge `step_events` v2 (iOS and Android).** Each Head Turn step and
+    each Follow Dot waypoint after the first reports how the head first moved
+    (`first_move_deg`, `first_move_ms`, `max_away_deg`), so the server can
+    catch a replayed or looping video that moves the wrong way first. The
+    server records these before it enforces anything.
+  - **Android: the extra check follows the person (closed loop), as on
+    iOS.** A Head Turn step or Follow Dot waypoint ends when the head
+    reaches the target and holds it for 0.6 s, with one hint and a second
+    try before it moves on. It judges pitch as well as yaw, so up, down and
+    vertical dot moves count. A gate failure the turn itself causes no
+    longer pauses the check.
+- No API change in this wrapper.
+
 ## [2.7.0] - 2026-11-11
 
 ### Added

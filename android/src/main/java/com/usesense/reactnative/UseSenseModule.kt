@@ -3,6 +3,9 @@ package com.usesense.reactnative
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.usesense.sdk.*
+import com.usesense.sdk.flows.FlowAppearance
+import com.usesense.sdk.flows.FlowCopy
+import org.json.JSONObject
 
 class UseSenseModule(private val reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
@@ -19,12 +22,24 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
         val branding = if (configMap.hasKey("branding")) {
             val b = configMap.getMap("branding")
             BrandingConfig(
-                logoUrl = b?.getString("logoUrl"),
+                displayName = b?.optString("displayName"),
+                logoUrl = b?.optString("logoUrl"),
                 // Unset stays null so the dashboard (Flow, then org) value applies:
                 // code wins only for fields the app actually set.
-                primaryColor = b?.getString("primaryColor"),
+                primaryColor = b?.optString("primaryColor"),
+                redirectUrl = b?.optString("redirectUrl"),
                 buttonRadius = if (b?.hasKey("buttonRadius") == true && !b.isNull("buttonRadius")) b.getInt("buttonRadius") else null,
-                fontFamily = b?.getString("fontFamily"),
+                fontFamily = b?.optString("fontFamily"),
+                // BRAND-v1: the full appearance / copy for every capture screen.
+                // Forwarded raw (camelCase, as in the web contract) and decoded by
+                // the SDK; a malformed map degrades to null (inherit) rather than
+                // failing initialize.
+                appearance = b?.optMap("appearance")?.let {
+                    runCatching { FlowAppearance.decode(it.toJSONObject()) }.getOrNull()
+                },
+                copy = b?.optMap("copy")?.let {
+                    runCatching { FlowCopy.decode(it.toJSONObject()) }.getOrNull()
+                },
             )
         } else null
 
@@ -238,4 +253,13 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
     fun removeListeners(count: Int) {
         // Required for NativeEventEmitter
     }
+
+    private fun ReadableMap.optString(key: String): String? =
+        if (hasKey(key) && !isNull(key)) getString(key) else null
+
+    private fun ReadableMap.optMap(key: String): ReadableMap? =
+        if (hasKey(key) && !isNull(key) && getType(key) == ReadableType.Map) getMap(key) else null
+
+    /** Nested HashMap / ArrayList values from `toHashMap()`; `JSONObject(Map)` walks them. */
+    private fun ReadableMap.toJSONObject(): JSONObject = JSONObject(this.toHashMap() as Map<*, *>)
 }

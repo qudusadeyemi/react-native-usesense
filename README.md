@@ -49,7 +49,7 @@ cd ios && pod install
 
 The native Sense iOS SDK is installed automatically as a CocoaPod
 dependency from the public CocoaPods trunk (`UseSenseSDK`, pinned to
-`~> 4.2`). Add required permissions to your `Info.plist`:
+`~> 4.11.0`). Add required permissions to your `Info.plist`:
 
 ```xml
 <key>NSCameraUsageDescription</key>
@@ -137,18 +137,45 @@ try {
 
 ## White-labeling (Appearance & Copy)
 
-The verification flow UI is fully customizable through two optional inputs you pass
-on a flow run: `appearance` (`FlowAppearance`) and `copy` (`FlowCopy`). Values are
-merged **SDK-init > dashboard (org settings) > built-in default**. Every field is
-optional; anything you omit keeps the Sense default.
+The capture screens and the Flow runner are customizable through two optional
+inputs: `appearance` (`FlowAppearance`) and `copy` (`FlowCopy`). Pass them on
+`branding` at `initialize` for sessions (from 2.7.0), or on a flow run. Values are
+merged per field: **code > dashboard (Flow, then org) > built-in default**. Every
+field is optional; anything you omit keeps the dashboard value, then the Sense default.
 
-You can set this two ways: in code (below), or no-code via the dashboard's
-**Flows → Appearance** tab (saved on your org, delivered to every SDK and the hosted
-pages, no redeploy).
+You can set this two ways: in code (below), or no-code in the dashboard's
+**Brand** page (delivered to every SDK and the hosted pages, no redeploy).
 
-Customizable surfaces: colors (plus dark-mode overrides), typography, shape and
-button style, logo, background, icons/illustrations, the loader, and every
-subject-facing string plus privacy copy.
+Customizable surfaces: colors (plus dark-mode overrides) and `mode`, typography,
+shape and button style, logo, background, icons/illustrations, the loader, camera
+accents (`appearance.capture`: scan ring, extra-check ring, warning), every
+capture-screen string (`copy.capture`), and the Flow runner's strings plus
+privacy copy. The camera screens stay dark; brand colours appear there as accents.
+
+Sessions:
+
+```typescript
+import { UseSense } from 'react-native-usesense';
+
+await UseSense.initialize({
+  apiKey: 'sk_sandbox_...',
+  branding: {
+    appearance: {
+      mode: 'light',
+      colors: { primary: '#E4002B' },
+      capture: { ring: '#FF5A6E' },
+    },
+    copy: {
+      capture: {
+        primer: { selfieTitle: 'Take a quick selfie' },
+        extraCheck: { headTurnNext: 'Now to the {side}' },
+      },
+    },
+  },
+});
+```
+
+Flows:
 
 ```typescript
 import { UseSenseFlows, FlowAppearance, FlowCopy } from 'react-native-usesense';
@@ -183,6 +210,8 @@ interface BrandingConfig {
   fontFamily?: string;
   displayName?: string;      // Android only
   redirectUrl?: string;      // Android only
+  appearance?: FlowAppearance; // every capture screen; beats the fields above
+  copy?: FlowCopy;             // capture strings under copy.capture
 }
 ```
 

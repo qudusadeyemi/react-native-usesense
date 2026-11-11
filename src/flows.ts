@@ -186,9 +186,28 @@ export interface AppearanceLoader {
 }
 
 /**
- * White-label appearance overrides for the Flow runner. Supplied at SDK init
- * (this option) and merged over the operator's server-delivered branding by
- * the native runner. Mirrors `FlowAppearance` in the web SDK.
+ * Camera-surface accents (BRAND-v1 section 4.2). The camera is always dark, so
+ * each accent must reach 3:1 on `#333333`; the native SDK lightens or replaces
+ * a colour that does not.
+ */
+export interface AppearanceCapture {
+  /** Align oval "ready" stroke, scan ring, contour lines, upload bar. Falls back to `colors.primary`. */
+  ring?: string;
+  /** Extra-check ring while it runs and the extra-check sheet icon. Default `#A878FC`. */
+  challenge?: string;
+  /** Failing oval, paused ring, Follow Dot dot and trail. Falls back to `colors.warning`. */
+  warning?: string;
+  /** @deprecated Retired in BRAND-v1: accepted and ignored. */
+  contourStart?: string;
+  /** @deprecated Retired in BRAND-v1: accepted and ignored. */
+  contourEnd?: string;
+}
+
+/**
+ * White-label appearance. Used by every capture screen (session mode, through
+ * `BrandingConfig.appearance`) and by the Flow runner (`runFlow`). Merged over
+ * the operator's dashboard branding by the native SDK; code wins per field.
+ * Mirrors `FlowAppearance` in the web SDK.
  */
 export interface FlowAppearance {
   colors?: AppearanceColors;
@@ -200,15 +219,62 @@ export interface FlowAppearance {
   icons?: AppearanceIcons;
   /** Loading-animation preset or custom asset. */
   loader?: AppearanceLoader;
-  /** Force a palette or follow the OS (default 'auto'). */
+  /**
+   * Force a palette or follow the OS. Unset: capture page screens stay dark
+   * and Flow runner screens keep their default.
+   */
   mode?: 'light' | 'dark' | 'auto';
+  /** Camera-surface accents (scan ring, extra-check ring, warning). */
+  capture?: AppearanceCapture;
+}
+
+/** A group of capture strings: known keys plus platform-specific extras. */
+type CaptureCopyGroup<K extends string> = { [P in K]?: string } & {
+  [key: string]: string | string[] | undefined;
+};
+
+/**
+ * Capture-screen strings (BRAND-v1 section 5, `copy.capture`). Every key is
+ * optional; a missing or blank value keeps the SDK's shipped English string.
+ * Placeholders: `{app}` = the display name (else the host app's name) and
+ * `{side}` = the bare direction word (`left`, `right`, `up`, `down`). Keys
+ * one platform adds (see the native SDK changelogs) are accepted too.
+ */
+export interface CaptureCopy {
+  primer?: CaptureCopyGroup<
+    | 'selfieTitle' | 'selfieBody' | 'start' | 'cancel'
+    | 'twoStepsTitle' | 'twoStepsBody'
+  > & { selfieTips?: string[]; twoStepsTips?: string[] };
+  guidance?: CaptureCopyGroup<
+    | 'ready' | 'centre' | 'closer' | 'back' | 'straight' | 'dark' | 'darkHint'
+    | 'bright' | 'brightHint' | 'blur' | 'eyes' | 'onePerson' | 'showFace'
+    | 'covered' | 'holdStill' | 'shutterHint'
+  >;
+  extraCheck?: CaptureCopyGroup<
+    | 'sheetTitle' | 'sheetBody' | 'continue' | 'headTurn' | 'headTurnNext'
+    | 'followDot' | 'speakDigits' | 'lookCentre' | 'tryNext' | 'again'
+    | 'pausedTurnSide' | 'pausedLookCentre' | 'done'
+  >;
+  upload?: CaptureCopyGroup<'title' | 'caption' | 'failedTitle' | 'failedBody' | 'retry'>;
+  result?: CaptureCopyGroup<
+    | 'approvedTitle' | 'approvedBody' | 'reviewTitle' | 'reviewBody'
+    | 'rejectedTitle' | 'rejectedBody' | 'retryTitle' | 'retryBody'
+    | 'done' | 'tryAgain' | 'notNow'
+  > & { retryTips?: string[] };
+  errors?: CaptureCopyGroup<
+    | 'cameraDeniedTitle' | 'cameraDeniedBody' | 'openSettings'
+    | 'cameraStoppedTitle' | 'cameraStoppedBody' | 'micTitle' | 'micBody'
+    | 'useHeadMovement' | 'offlineTitle' | 'offlineBody' | 'expiredTitle'
+    | 'expiredBody' | 'startAgain' | 'errorTitle' | 'errorBody'
+  >;
+  leave?: CaptureCopyGroup<'title' | 'body' | 'leave' | 'keepGoing'>;
 }
 
 /**
- * White-label copy overrides for the Flow runner. Every subject-facing string
- * can be overridden; an omitted key keeps the built-in copy. Supplied at SDK
- * init and merged over the operator's server-delivered copy by the native
- * runner. Mirrors `FlowCopy` in the web SDK.
+ * White-label copy overrides. Used by every capture screen (session mode,
+ * through `BrandingConfig.copy`) and by the Flow runner (`runFlow`). An
+ * omitted key keeps the dashboard copy, then the built-in copy. Mirrors
+ * `FlowCopy` in the web SDK.
  */
 export interface FlowCopy {
   /** Optional welcome/intro shown before the first step (when set). */
@@ -253,6 +319,8 @@ export interface FlowCopy {
   privacy?: { disclosure?: string; consentTitle?: string; consentBody?: string };
   /** Free-form help text / tooltips keyed by an SDK-defined slot id. */
   help?: Record<string, string>;
+  /** Capture-screen strings (BRAND-v1 section 5). */
+  capture?: CaptureCopy;
 }
 
 /** Options for `UseSenseFlows.runFlow`. */

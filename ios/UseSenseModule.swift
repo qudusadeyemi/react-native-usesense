@@ -72,7 +72,7 @@ class UseSenseModule: RCTEventEmitter {
         var brandingConfig: BrandingConfig? = nil
         if let b = config["branding"] as? [String: Any] {
             // iOS BrandingConfig accepts logoUrl, primaryColor, buttonRadius,
-            // fontFamily. Android-only fields (displayName, redirectUrl) are
+            // fontFamily, appearance, copy. Android-only fields (displayName, redirectUrl) are
             // accepted by the JS API for cross-platform consistency but
             // ignored here since the iOS SDK doesn't support them.
             brandingConfig = BrandingConfig(
@@ -81,7 +81,12 @@ class UseSenseModule: RCTEventEmitter {
                 // code wins only for fields the app actually set.
                 primaryColor: b["primaryColor"] as? String,
                 buttonRadius: (b["buttonRadius"] as? NSNumber).map { CGFloat($0.doubleValue) },
-                fontFamily: b["fontFamily"] as? String
+                fontFamily: b["fontFamily"] as? String,
+                // BRAND-v1: the full appearance / copy for every capture screen.
+                // Forwarded raw (camelCase, as in the web contract) and decoded by
+                // the SDK; a malformed map degrades to nil (inherit).
+                appearance: (b["appearance"] as? [String: Any]).flatMap(FlowAppearance.decodeFromJSONObject),
+                copy: (b["copy"] as? [String: Any]).flatMap(FlowCopy.decodeFromJSONObject)
             )
         }
 

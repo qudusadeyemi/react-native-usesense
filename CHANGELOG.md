@@ -4,6 +4,40 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.7.0] - 2026-11-11
+
+### Added
+- **New capture screens.** The native SDKs ship the guided capture redesign:
+  a "Take a quick selfie" primer, a guided align and scan with live hints, an
+  extra check on the scan screen when the server asks for one (Head Turn,
+  Follow Dot or Speak Digits), an upload sheet, and new result and error
+  pages. A face that is too dark to scan asks for more light, with the screen
+  as a fill light. The SDKs also upload the LiveSense evidence the server now
+  scores (EVIDENCE-v1). No code change is needed to get them.
+- **Brand support on the capture screens (BRAND-v1).** `BrandingConfig` takes
+  `appearance` (`FlowAppearance`) and `copy` (`FlowCopy`) in session mode, as
+  `runFlow` already did. They reach the native `BrandingConfig.appearance` /
+  `copy` on iOS and Android and style every capture screen: palette and
+  `mode` on the page screens (unset stays dark), fonts, button shape and
+  style, logo, icons, loader, and brand accents on the camera (which stays
+  dark). New types: `appearance.capture` (`AppearanceCapture`: `ring`,
+  `challenge`, `warning`) and `copy.capture` (`CaptureCopy`: every capture
+  string, with `{app}` and `{side}` placeholders). Per field, code beats the
+  dashboard (Flow, then org), which beats the Sense defaults, and
+  `appearance` beats the legacy `primaryColor` / `buttonRadius` /
+  `fontFamily` / `logoUrl`. Unset fields still stay unset (2.6.0).
+
+### Fixed
+- **Android: `branding.displayName` and `branding.redirectUrl` now reach the
+  SDK in session mode.** They were documented as Android fields but were
+  never forwarded.
+
+### Changed
+- Bumped the native SDK pins: `ai.usesense:sdk` `4.11.0` → **`4.13.1`** and
+  `UseSenseSDK` `~> 4.9.0` → **`~> 4.11.0`** (>= 4.11.0, < 4.12.0).
+- **App size grows:** the native SDKs bundle a covered-face model, about
+  +15 MB on Android and +16 MB on iOS.
+
 ## [2.6.0] - 2026-11-07
 
 ### Fixed

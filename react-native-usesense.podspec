@@ -53,5 +53,9 @@ Pod::Spec.new do |s|
   # Device Trust step no longer spins.
   # 4.9.0: code-wins branding, matching capture/result screens, watchdog fix.
   # `~> 4.9.0` means >= 4.9.0, < 4.10.0.
-  s.dependency "UseSenseSDK", "~> 4.9.0"
+  # 4.11.0 is the floor: the guided capture redesign, the extra check on the
+  # scan screen, the LiveSense evidence upload (EVIDENCE-v1), the covered-face
+  # model (about +16 MB) and BrandingConfig.appearance / copy on every capture
+  # screen (BRAND-v1). `~> 4.11.0` means >= 4.11.0, < 4.12.0.
+  s.dependency "UseSenseSDK", "~> 4.11.0"
 end

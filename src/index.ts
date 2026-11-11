@@ -1,4 +1,5 @@
 import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import type { FlowAppearance, FlowCopy } from './flows';
 
 const LINKING_ERROR =
   `react-native-usesense: the native module could not be found.\n\n` +
@@ -38,8 +39,16 @@ export type SessionType = 'enrollment' | 'authentication';
 export type Decision = 'APPROVE' | 'REJECT' | 'MANUAL_REVIEW';
 
 /**
- * Branding overrides applied to the native camera UI.
+ * Branding for the native capture screens (session mode).
  *
+ * Precedence per field, highest first: these code values, then the dashboard
+ * (Flow, then org), then the Sense defaults. An unset field stays unset, so
+ * it never hides a dashboard value.
+ *
+ * - `appearance` / `copy` (from 2.7.0) style and word every capture screen:
+ *   palette and `mode`, fonts, shape, logo, camera accents and the
+ *   `copy.capture` strings. Per field, `appearance` beats the legacy fields
+ *   below.
  * - `logoUrl`, `primaryColor`, `buttonRadius`, `fontFamily` are
  *   honoured on both iOS and Android.
  * - `displayName`, `redirectUrl` are Android-only fields. They're
@@ -52,6 +61,10 @@ export interface BrandingConfig {
   fontFamily?: string;
   displayName?: string;
   redirectUrl?: string;
+  /** Full white-label appearance for every capture screen (BRAND-v1). */
+  appearance?: FlowAppearance;
+  /** Capture-screen copy, under `copy.capture` (BRAND-v1 section 5). */
+  copy?: FlowCopy;
 }
 
 /**
@@ -411,4 +424,6 @@ export {
   type AppearanceShape,
   type AppearanceIcons,
   type AppearanceLoader,
+  type AppearanceCapture,
+  type CaptureCopy,
 } from './flows';

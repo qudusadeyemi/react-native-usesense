@@ -69,7 +69,14 @@ dependencies {
     // Device Trust step is settled from the network alone.
     // 4.9.1: capture screens take the org brand colour; a nonce-less
     // Device Trust step is re-read once, then fails cleanly.
-    implementation "ai.usesense:sdk:4.11.0"
+    // 4.11.0: code-wins branding, matching capture/result screens; the
+    // decision reaches the callback on the result-button tap.
+    // 4.13.1 is the floor: the guided capture redesign, the extra check on
+    // the scan screen, the LiveSense evidence upload (EVIDENCE-v1), the
+    // covered-face model (about +15 MB) and BrandingConfig.appearance / copy
+    // on every capture screen (BRAND-v1). Below it session mode cannot take
+    // appearance or copy at all.
+    implementation "ai.usesense:sdk:4.13.1"
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${safeExtGet('kotlinVersion', '2.0.0')}"
 }

@@ -59,6 +59,8 @@ Pod::Spec.new do |s|
   # screen (BRAND-v1). `~> 4.11.0` means >= 4.11.0, < 4.12.0.
   # 4.12.0 is the floor: step_events v2, the first move per Head Turn step
   # and Follow Dot waypoint, for the server's replay checks.
-  # `~> 4.12.0` means >= 4.12.0, < 4.13.0.
-  s.dependency "UseSenseSDK", "~> 4.12.0"
+  # 4.13.0 is the floor: the headless silent device check for Your KYC
+  # (UseSense.deviceCheck), bridged as deviceCheck().
+  # `~> 4.13.0` means >= 4.13.0, < 4.14.0.
+  s.dependency "UseSenseSDK", "~> 4.13.0"
 end

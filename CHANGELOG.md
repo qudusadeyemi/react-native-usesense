@@ -4,6 +4,21 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.9.0] - 2026-11-17
+
+### Added
+- **`deviceCheck()`: the headless silent device check for Your KYC.** Keep your
+  own KYC provider's SDK and run this next to it: no UI, no camera, no
+  permission prompt. Create the check on your server (`POST /v1/device-checks`),
+  then `start()` before the provider opens and `finish()` after it closes. Both
+  resolve to `{ ok, phase, error? }` and never reject. Error codes are
+  normalised across iOS and Android to the web SDK's names.
+
+### Changed
+- Bumped the native SDK pins: `ai.usesense:sdk` `4.14.0` → **`4.15.0`** and
+  `UseSenseSDK` `~> 4.12.0` → **`~> 4.13.0`** (>= 4.13.0, < 4.14.0), which
+  carry the native device check.
+
 ## [2.8.0] - 2026-11-11
 
 ### Changed

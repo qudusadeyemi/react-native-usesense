@@ -405,6 +405,19 @@ export interface V4Verdict {
 
 export default UseSense;
 
+// Headless silent device check for Your KYC: runs next to your own KYC
+// provider's SDK with no UI, no camera and no permission prompt.
+export {
+  deviceCheck,
+  normaliseDeviceCheckCode,
+  type DeviceCheck,
+  type DeviceCheckError,
+  type DeviceCheckErrorCode,
+  type DeviceCheckOptions,
+  type DeviceCheckPhase,
+  type DeviceCheckResult,
+} from './deviceCheck';
+
 // Slice 5d: Flows. A parallel surface to Sessions — host apps choose one
 // per call. See guides/flows/sessions-vs-flows in the API docs.
 export {

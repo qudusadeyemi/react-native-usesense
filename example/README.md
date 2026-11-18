@@ -2,8 +2,12 @@
 
 Full React Native example app demonstrating plugin initialization,
 enrollment, authentication, real-time event streaming, and error
-handling. The app is a standalone RN 0.73.11 project that consumes
-the plugin from the parent directory via a `file:..` dependency.
+handling. The app is a standalone RN 0.76.5 project that consumes
+the plugin from the parent directory via a `file:..` dependency. It is a
+React Native 0.76.5 app on the New Architecture (the plugin runs through RN's
+interop layer), with no navigation library: `src/navigation.tsx` is a small
+stack navigator, so the only native modules are the plugin and AsyncStorage.
+`metro.config.js` watches the repo root so Metro can follow the `file:..` link.
 
 ## Setup
 
@@ -16,7 +20,7 @@ the plugin from the parent directory via a `file:..` dependency.
 3. Install example dependencies:
    ```bash
    cd example
-   npm install --legacy-peer-deps
+   npm install
    ```
 4. (iOS only) Install pods:
    ```bash

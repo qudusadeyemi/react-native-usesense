@@ -11,7 +11,6 @@ import {
   ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   UseSense,
   UseSenseError,
@@ -19,14 +18,14 @@ import {
   UseSenseFlows,
   FlowError,
 } from 'react-native-usesense';
-import { RootStackParamList } from '../App';
+import type { Navigation } from '../navigation';
 
 // Public API base for creating flow runs and for the SDK Flow runner. Sandbox
 // vs production is selected by the API key + the x-environment header.
 const API_BASE = 'https://api.usesense.ai';
 
 type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Home'>;
+  navigation: Navigation;
 };
 
 // AsyncStorage keys — match the semantics of iOS's @AppStorage("apiKey")

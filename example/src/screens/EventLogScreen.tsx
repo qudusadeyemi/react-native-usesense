@@ -55,7 +55,7 @@ export default function EventLogScreen() {
 
   const startTestSession = async () => {
     try {
-      await UseSense.startSession({ sessionType: 'enrollment' });
+      await UseSense.startVerification({ sessionType: 'enrollment' });
     } catch (error) {
       const err = error as any;
       if (err.code !== 'session_cancelled') {

@@ -1,9 +1,8 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../App';
+import type { ScreenProps } from '../navigation';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Result'>;
+type Props = ScreenProps<'Result'>;
 
 const DECISION_CONFIG = {
   APPROVE: { label: 'Approved', color: '#00D4AA', bg: '#064E3B' },

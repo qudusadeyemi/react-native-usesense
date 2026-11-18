@@ -6,11 +6,13 @@ import type { UseSenseResult } from 'react-native-usesense';
 import HomeScreen from './screens/HomeScreen';
 import ResultScreen from './screens/ResultScreen';
 import EventLogScreen from './screens/EventLogScreen';
+import DeviceCheckScreen, { launchCheck } from './screens/DeviceCheckScreen';
 
 export type RootStackParamList = {
   Home: undefined;
   Result: { result: UseSenseResult };
   EventLog: undefined;
+  DeviceCheck: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -30,6 +32,9 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator
+        // A launch carrying a device check (automated iOS device tests)
+        // opens the silent device check screen, which runs it.
+        initialRouteName={launchCheck() ? 'DeviceCheck' : 'Home'}
         screenOptions={{
           headerStyle: { backgroundColor: '#1A1A2E' },
           headerTintColor: '#FFFFFF',
@@ -45,6 +50,11 @@ export default function App() {
           name="Result"
           component={ResultScreen}
           options={{ title: 'Verification Result' }}
+        />
+        <Stack.Screen
+          name="DeviceCheck"
+          component={DeviceCheckScreen}
+          options={{ title: 'Silent device check' }}
         />
         <Stack.Screen
           name="EventLog"

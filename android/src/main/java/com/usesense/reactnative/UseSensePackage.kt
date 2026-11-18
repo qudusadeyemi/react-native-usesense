@@ -13,6 +13,8 @@ class UseSensePackage : ReactPackage {
             // Slice 5d: Flows runner module (parallel surface to Sessions, not
             // a replacement). Host apps pick one per call.
             UseSenseFlowsModule(reactContext),
+            // Headless silent device check for Your KYC (no UI).
+            UseSenseDeviceCheckModule(reactContext),
         )
     }
 

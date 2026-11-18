@@ -49,7 +49,7 @@ cd ios && pod install
 
 The native Sense iOS SDK is installed automatically as a CocoaPod
 dependency from the public CocoaPods trunk (`UseSenseSDK`, pinned to
-`~> 4.12.0`). Add required permissions to your `Info.plist`:
+`~> 4.13.0`). Add required permissions to your `Info.plist`:
 
 ```xml
 <key>NSCameraUsageDescription</key>
@@ -192,6 +192,48 @@ await UseSenseFlows.runFlow({ flowRunId, sdkToken, appearance, copy });
 ```
 
 Full reference: [`docs/WHITE_LABEL.md` in the web SDK](https://github.com/qudusadeyemi/usesense-web-sdk/blob/main/docs/WHITE_LABEL.md).
+
+## Silent device check (Your KYC)
+
+Keep your own KYC provider's SDK and run `deviceCheck()` next to it. No UI, no camera and
+no permission prompt: Sense scores the device and links the result to your provider's
+result when it reaches your Your KYC connection.
+
+1. **Your server** creates a check with your API key (never ship the key in the app):
+
+   ```bash
+   curl -X POST https://api.usesense.ai/v1/device-checks \
+     -H "x-api-key: sk_your_key" -H "content-type: application/json" \
+     -d '{ "user_ref": "cust_88211", "platform": "android" }'   # or "ios"
+   # 201 { "deviceCheckId": "dc_...", "token": "dct_...", "nonce": "dn_...", "expiresAt": "..." }
+   ```
+
+2. **The app** runs the check around your provider, passing `deviceCheckId` into the
+   provider's metadata (map it to **Device check id** on the connection), or use the same
+   `user_ref` for both:
+
+   ```ts
+   import { deviceCheck } from 'react-native-usesense';
+
+   const check = deviceCheck({ deviceCheckId, token, nonce });
+
+   const started = await check.start(); // before your provider's SDK opens
+   if (!started.ok) console.warn('device check:', started.error.code);
+
+   await provider.start({ metadata: { device_check_id: deviceCheckId } });
+
+   await check.finish(); // after it closes
+   check.dispose();
+   ```
+
+`start()` and `finish()` never reject. They resolve to `{ ok: true, phase }` or
+`{ ok: false, phase, error: { code, message, retryable } }`. The codes are the same on iOS
+and Android (and match the web SDK): `invalid_token` and `token_expired` (create a new
+check; a token lasts 15 minutes), `nonce_mismatch`, `invalid_input`, `out_of_order` (start
+once, then finish once), `not_found`, `unavailable`, `network_error`, `timeout` (retried
+once by the SDK already), `invalid_config`, `cancelled`. The app is never told the score;
+read it on your server with `GET /v1/device-checks/:id`. Needs native SDKs iOS 4.13.0 and
+Android 4.15.0 (pinned by this package).
 
 ## Configuration
 

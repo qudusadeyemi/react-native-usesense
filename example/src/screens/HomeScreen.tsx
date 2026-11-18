@@ -377,6 +377,13 @@ export default function HomeScreen({ navigation }: Props) {
 
       <TouchableOpacity
         style={styles.eventLogLink}
+        onPress={() => navigation.navigate('DeviceCheck')}
+      >
+        <Text style={styles.eventLogLinkText}>Silent device check (Your KYC)</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.eventLogLink}
         onPress={() => navigation.navigate('EventLog')}
       >
         <Text style={styles.eventLogLinkText}>View Event Log</Text>

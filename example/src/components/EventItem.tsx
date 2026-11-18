@@ -7,41 +7,32 @@ interface Props {
   timestamp: Date;
 }
 
-const EVENT_ICONS: Record<string, string> = {
-  session_started: '[S]',
-  challenge_presented: '[C]',
-  challenge_completed: '[V]',
-  processing: '[P]',
-  session_completed: '[D]',
-  session_error: '[!]',
+const EVENT_ICONS: Partial<Record<UseSenseEvent['type'], string>> = {
+  SESSION_CREATED: '[S]',
+  CHALLENGE_STARTED: '[C]',
+  CHALLENGE_COMPLETED: '[V]',
+  UPLOAD_STARTED: '[U]',
+  COMPLETE_STARTED: '[P]',
+  DECISION_RECEIVED: '[D]',
+  ERROR: '[!]',
 };
 
-const EVENT_COLORS: Record<string, string> = {
-  session_started: '#818CF8',
-  challenge_presented: '#F59E0B',
-  challenge_completed: '#10B981',
-  processing: '#60A5FA',
-  session_completed: '#34D399',
-  session_error: '#EF4444',
+const EVENT_COLORS: Partial<Record<UseSenseEvent['type'], string>> = {
+  SESSION_CREATED: '#818CF8',
+  CHALLENGE_STARTED: '#F59E0B',
+  CHALLENGE_COMPLETED: '#10B981',
+  UPLOAD_STARTED: '#60A5FA',
+  COMPLETE_STARTED: '#60A5FA',
+  DECISION_RECEIVED: '#34D399',
+  ERROR: '#EF4444',
 };
 
+/** The event's payload as `key: value` pairs (opaque strings, never scoring data). */
 function getEventDetail(event: UseSenseEvent): string {
-  switch (event.type) {
-    case 'session_started':
-      return event.sessionId;
-    case 'challenge_presented':
-      return event.challengeType;
-    case 'challenge_completed':
-      return event.challengeType;
-    case 'processing':
-      return event.stage;
-    case 'session_completed':
-      return event.result.decision;
-    case 'session_error':
-      return `${event.error.code}: ${event.error.message}`;
-    default:
-      return '';
-  }
+  if (!event.data) return '';
+  return Object.entries(event.data)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join('  ');
 }
 
 function formatTime(date: Date): string {

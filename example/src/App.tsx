@@ -1,21 +1,12 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import type { UseSenseResult } from 'react-native-usesense';
 
+import { StackNavigator, type RootStackParamList } from './navigation';
 import HomeScreen from './screens/HomeScreen';
 import ResultScreen from './screens/ResultScreen';
 import EventLogScreen from './screens/EventLogScreen';
 import DeviceCheckScreen, { launchCheck } from './screens/DeviceCheckScreen';
 
-export type RootStackParamList = {
-  Home: undefined;
-  Result: { result: UseSenseResult };
-  EventLog: undefined;
-  DeviceCheck: undefined;
-};
-
-const Stack = createNativeStackNavigator<RootStackParamList>();
+export type { RootStackParamList };
 
 /**
  * Example app root.
@@ -25,43 +16,21 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
  * AsyncStorage-backed TextInput and calls `UseSense.initialize` lazily
  * on first Enroll/Authenticate tap. This matches the iOS example's
  * `@AppStorage("apiKey")` + `SecureField` pattern and the Android
- * example's `SharedPreferences` pattern — integrators can clone, run,
+ * example's `SharedPreferences` pattern: integrators can clone, run,
  * paste their key once, and test without touching any source code.
  */
 export default function App() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        // A launch carrying a device check (automated iOS device tests)
-        // opens the silent device check screen, which runs it.
-        initialRouteName={launchCheck() ? 'DeviceCheck' : 'Home'}
-        screenOptions={{
-          headerStyle: { backgroundColor: '#1A1A2E' },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: { fontWeight: '600' },
-        }}
-      >
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ title: 'Sense Example' }}
-        />
-        <Stack.Screen
-          name="Result"
-          component={ResultScreen}
-          options={{ title: 'Verification Result' }}
-        />
-        <Stack.Screen
-          name="DeviceCheck"
-          component={DeviceCheckScreen}
-          options={{ title: 'Silent device check' }}
-        />
-        <Stack.Screen
-          name="EventLog"
-          component={EventLogScreen}
-          options={{ title: 'Event Log' }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <StackNavigator
+      // A launch carrying a device check (automated iOS device tests)
+      // opens the silent device check screen, which runs it.
+      initialRoute={launchCheck() ? 'DeviceCheck' : 'Home'}
+      screens={{
+        Home: { component: HomeScreen, title: 'Sense Example' },
+        Result: { component: ResultScreen, title: 'Verification Result' },
+        EventLog: { component: EventLogScreen, title: 'Event Log' },
+        DeviceCheck: { component: DeviceCheckScreen, title: 'Silent device check' },
+      }}
+    />
   );
 }

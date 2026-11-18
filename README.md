@@ -49,7 +49,7 @@ cd ios && pod install
 
 The native Sense iOS SDK is installed automatically as a CocoaPod
 dependency from the public CocoaPods trunk (`UseSenseSDK`, pinned to
-`~> 4.13.0`). Add required permissions to your `Info.plist`:
+`~> 4.13.1`). Add required permissions to your `Info.plist`:
 
 ```xml
 <key>NSCameraUsageDescription</key>
@@ -232,7 +232,7 @@ and Android (and match the web SDK): `invalid_token` and `token_expired` (create
 check; a token lasts 15 minutes), `nonce_mismatch`, `invalid_input`, `out_of_order` (start
 once, then finish once), `not_found`, `unavailable`, `network_error`, `timeout` (retried
 once by the SDK already), `invalid_config`, `cancelled`. The app is never told the score;
-read it on your server with `GET /v1/device-checks/:id`. Needs native SDKs iOS 4.13.0 and
+read it on your server with `GET /v1/device-checks/:id`. Needs native SDKs iOS 4.13.1 and
 Android 4.15.0 (pinned by this package).
 
 ## Configuration

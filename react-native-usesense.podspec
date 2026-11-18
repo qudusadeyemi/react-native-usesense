@@ -61,6 +61,8 @@ Pod::Spec.new do |s|
   # and Follow Dot waypoint, for the server's replay checks.
   # 4.13.0 is the floor: the headless silent device check for Your KYC
   # (UseSense.deviceCheck), bridged as deviceCheck().
-  # `~> 4.13.0` means >= 4.13.0, < 4.14.0.
-  s.dependency "UseSenseSDK", "~> 4.13.0"
+  # 4.13.1 is the floor: device checks send the device telemetry (cpu_abi,
+  # RAM, storage) the server scores; 4.13.0 scored them 0 on every iOS check.
+  # `~> 4.13.1` means >= 4.13.1, < 4.14.0.
+  s.dependency "UseSenseSDK", "~> 4.13.1"
 end

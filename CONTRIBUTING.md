@@ -86,7 +86,7 @@ The plugin depends on specific minimum versions of the native SDKs:
 
 | Platform | Manifest | Current floor |
 |----------|----------|---------------|
-| iOS | `react-native-usesense.podspec` → `s.dependency "UseSenseSDK", "~> 4.13.0"` | 4.13.0 |
+| iOS | `react-native-usesense.podspec` → `s.dependency "UseSenseSDK", "~> 4.13.1"` | 4.13.1 |
 | Android | `android/build.gradle` → `implementation "ai.usesense:sdk:4.15.0"` | 4.15.0 |
 
 When the native SDKs ship a new version:

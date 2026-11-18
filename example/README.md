@@ -85,14 +85,15 @@ stack navigator, so the only native modules are the plugin and AsyncStorage.
 
 ## Notes
 
-- The example is a RN 0.73.11 project scaffolded via
-  `npx @react-native-community/cli init`. If you need to regenerate
-  native projects for a different RN version, delete `example/ios`,
-  `example/android`, `example/index.js`, `example/metro.config.js`,
-  `example/babel.config.js`, and `example/tsconfig.json` and re-run
-  `init` at the desired version.
+- The example is a RN 0.76.5 project scaffolded via
+  `npx @react-native-community/cli init`. To regenerate the native
+  projects for another RN version, re-run `init` at that version and copy
+  its `ios`, `android`, `babel.config.js`, `tsconfig.json` and
+  `jest.config.js` over these, then re-apply: minSdk 28, the camera and
+  network permissions, the iOS usage strings, and keep this
+  `metro.config.js` (it follows the `file:..` link to the repo root).
 - Android `minSdkVersion` is bumped from the RN template default of
-  21 to 28 because the UseSense Android SDK's AAR declares
+  24 to 28 because the UseSense Android SDK's AAR declares
   `minSdk = 28`. Don't lower it.
 - iOS `minimum deployment target` is inherited from the RN template
   (iOS 13); the UseSense iOS SDK requires iOS 15.0+, so the example

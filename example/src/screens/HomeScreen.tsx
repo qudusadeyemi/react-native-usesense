@@ -125,10 +125,8 @@ export default function HomeScreen({ navigation }: Props) {
   const showSessionError = (error: unknown) => {
     const err = error as UseSenseError;
     switch (err.code) {
-      case 'session_cancelled':
       case 'USER_CANCELLED':
-      case 'CANCELLED':
-        // User cancelled — silent.
+        // User cancelled: silent.
         break;
       case 'CAMERA_PERMISSION_DENIED':
         Alert.alert('Camera Required', 'Camera access is required for identity verification.');

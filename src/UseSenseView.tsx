@@ -13,6 +13,7 @@ import type {
   VerificationRequest,
 } from './index';
 import { invalidConfig, validateClientToken, validateRequest } from './validation';
+import { normaliseError } from './errors';
 
 /** The error delivered to `onError`. Same shape the start methods reject with. */
 export type UseSenseViewErrorEvent = UseSenseError;
@@ -160,7 +161,7 @@ export class UseSenseView extends React.Component<UseSenseViewProps> {
   };
 
   private handleError = (event: NativeSyntheticEvent<UseSenseError>) => {
-    this.props.onError?.(withoutTarget(event.nativeEvent));
+    this.props.onError?.(normaliseError(withoutTarget(event.nativeEvent)));
   };
 
   private handleCancel = () => {

@@ -108,11 +108,7 @@ class UseSenseHostView: UIView {
         case .failure(let error) where error.code == .userCancelled:
             onUseSenseCancel?([:])
         case .failure(let error):
-            onUseSenseError?([
-                "code": UseSenseModule.bridgeErrorCode(error.code),
-                "message": error.message,
-                "isRetryable": error.isRetryable,
-            ])
+            onUseSenseError?(UseSenseModule.errorFields(error))
         }
     }
 

@@ -531,11 +531,23 @@ Full event list: `SESSION_CREATED`, `PERMISSIONS_REQUESTED`,
 
 ## Error handling
 
-`UseSense.startVerification` rejects with a `UseSenseError` on
-failure. Codes are uppercase strings matching the native SDK's
-canonical codes, plus a small set of bridge-specific codes
-(`session_cancelled`, `sdk_not_initialized`, `no_view_controller`,
-`invalid_config`).
+`startVerification`, `startVerificationWithToken`, the remote flows and
+`<UseSenseView onError>` all report a `UseSenseError`:
+
+```typescript
+interface UseSenseError {
+  code: string;         // a named code from the table below, the same on iOS and Android
+  message: string;      // human-readable
+  isRetryable?: boolean;
+  serverCode?: string;  // the server's own code when it sent one, e.g. 'token_expired'
+  nativeCode?: string;  // the platform's raw code, e.g. '410' on Android, 'TOKEN_EXPIRED' on iOS
+}
+```
+
+The iOS SDK reports named codes; the Android SDK reports numbers (an HTTP
+status, or a client code such as `1002`). The plugin maps Android's
+numbers to the iOS names, so you switch on one set of codes. The raw
+value stays in `nativeCode` for logs and support.
 
 ```typescript
 import { UseSense, UseSenseError } from 'react-native-usesense';
@@ -545,7 +557,6 @@ try {
 } catch (err) {
   const error = err as UseSenseError;
   switch (error.code) {
-    case 'session_cancelled':
     case 'USER_CANCELLED':
       // User tapped cancel / backed out. Silent.
       break;
@@ -556,27 +567,62 @@ try {
     case 'NETWORK_TIMEOUT':
       // Retry with exponential backoff.
       break;
-    case 'SESSION_EXPIRED':
-      // Start a fresh session.
+    case 'TOKEN_EXPIRED':
+    case 'TOKEN_ALREADY_USED':
+      // Client token: ask your server for a new one.
       break;
     case 'QUOTA_EXCEEDED':
     case 'INSUFFICIENT_CREDITS':
       // Rate-limited or out of credits. Surface to the user.
       break;
     case 'INVALID_CONFIG':
-    case 'sdk_not_initialized':
-      // Check your API key and that initialize() ran successfully.
+    case 'SDK_NOT_INITIALIZED':
+      // Check your API key / client token and that initialize() ran.
       break;
     default:
-      // UNKNOWN_ERROR, SERVER_ERROR, SERVICE_UNAVAILABLE, etc.
+      // SERVER_ERROR, SERVICE_UNAVAILABLE, UNKNOWN_ERROR, etc.
   }
 }
 ```
 
-Full error code reference: see the [native iOS SDK's
-`UseSenseErrorCode`](https://github.com/qudusadeyemi/usesense-ios-sdk/blob/main/Sources/UseSense/UseSenseError.swift)
-and the [native Android SDK's
-`UseSenseError`](https://github.com/qudusadeyemi/usesense-android-sdk/blob/main/sdk/src/main/java/com/usesense/sdk/UseSenseError.kt).
+| `code` | Meaning | Android `nativeCode` |
+|---|---|---|
+| `USER_CANCELLED` | The person backed out | `CANCELLED` (iOS: `session_cancelled`) |
+| `CAMERA_UNAVAILABLE` | No usable front camera | `1001` |
+| `CAMERA_PERMISSION_DENIED` | Camera permission refused | `1002` |
+| `MIC_PERMISSION_DENIED` | Microphone permission refused | `1003` |
+| `NETWORK_ERROR` | No connection or the request failed | `2001` |
+| `NETWORK_TIMEOUT` | A request timed out | `2002` |
+| `SESSION_EXPIRED` | The session expired | `3001`, `401` + `session_expired`, `410` |
+| `UPLOAD_FAILED` | The capture upload failed after retries | `3002` |
+| `CAPTURE_FAILED` | Frame capture failed | `4001` |
+| `NO_FRAMES_CAPTURED` | The camera returned no images | `4001` + `NO_FRAMES_CAPTURED` |
+| `ENCODING_FAILED` | Frame encoding failed | `4002` |
+| `INVALID_CONFIG` | Bad configuration or arguments (also raised in JS before the bridge) | `5001` |
+| `QUOTA_EXCEEDED` | Rate limited | `6001`, `429` |
+| `TIMEOUT` | Finishing the verification took too long | `7001` |
+| `CAPTURE_TIMEOUT` | The camera stopped responding | `7002` |
+| `UPLOAD_TIMEOUT` | Sending the capture took too long | `7003` |
+| `INVALID_REQUEST` | The server rejected the request | `400` |
+| `UNAUTHORIZED` | Bad or missing API key | `401`, `403` |
+| `INVALID_TOKEN` | Session token invalid | `401` + `invalid_token` |
+| `NONCE_MISMATCH` | Session check failed | `401` + `nonce_mismatch` |
+| `INSUFFICIENT_CREDITS` | Out of credits | `402` |
+| `SESSION_NOT_FOUND` | Session, or client token, not found | `404` (`serverCode` `token_not_found` for a token) |
+| `IDENTITY_NOT_FOUND` | The `identityId` does not exist | `404` + `identity_not_found` |
+| `TOKEN_ALREADY_USED` | The client token was already exchanged | `409` |
+| `TOKEN_EXPIRED` | The client token expired | `410` + `token_expired` |
+| `SERVER_ERROR` | Server error | `500`, other `5xx` |
+| `SERVICE_UNAVAILABLE` | Service unavailable | `503` |
+| `SDK_NOT_INITIALIZED` | `initialize()` was not called | `sdk_not_initialized` |
+| `NO_HOST_SCREEN` | No Activity / view controller to show the capture | `NO_ACTIVITY`, `no_activity` (iOS: `no_view_controller`) |
+| `UNSUPPORTED_CONTAINER` | `<UseSenseView>` inside a React Native `<Modal>` (Android) | `unsupported_container` |
+| `UNKNOWN_ERROR` | Anything else | other numbers |
+
+iOS can also report `FACE_NOT_DETECTED`, `LOW_LIGHT` and `RESPONSE_INVALID`
+(the result could not be read). The type `UseSenseErrorCode` lists every
+code, and `normaliseError(raw)` is exported if you call the native module
+yourself.
 
 ## Security model: always verify the webhook
 

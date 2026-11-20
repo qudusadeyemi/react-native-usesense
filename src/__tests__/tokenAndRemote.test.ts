@@ -79,12 +79,33 @@ describe('UseSense.startVerificationWithToken', () => {
     expect(native.startVerificationWithToken).not.toHaveBeenCalled();
   });
 
-  it('passes native errors (token_expired etc.) through unchanged', async () => {
-    const error = { code: 'TOKEN_EXPIRED', message: 'expired', serverCode: 'token_expired' };
-    native.startVerificationWithToken.mockRejectedValue(error);
+  it('rejects with the named code for an Android token error, keeping the raw value', async () => {
+    // What an Android promise rejection looks like in JS.
+    native.startVerificationWithToken.mockRejectedValue({
+      code: '410',
+      message: 'Token expired',
+      userInfo: { code: 410, serverCode: 'token_expired', isRetryable: false, message: 'Token expired' },
+    });
     await expect(
       UseSense.startVerificationWithToken({ clientToken: 'cli_tok_abc', sessionType: 'enrollment' }),
-    ).rejects.toBe(error);
+    ).rejects.toEqual({
+      code: 'TOKEN_EXPIRED',
+      message: 'Token expired',
+      isRetryable: false,
+      serverCode: 'token_expired',
+      nativeCode: '410',
+    });
+  });
+
+  it('keeps iOS named codes and records them as nativeCode', async () => {
+    native.startVerificationWithToken.mockRejectedValue({
+      code: 'TOKEN_ALREADY_USED',
+      message: 'used',
+      userInfo: { serverCode: 'token_already_used', isRetryable: false },
+    });
+    await expect(
+      UseSense.startVerificationWithToken({ clientToken: 'cli_tok_abc', sessionType: 'enrollment' }),
+    ).rejects.toMatchObject({ code: 'TOKEN_ALREADY_USED', nativeCode: 'TOKEN_ALREADY_USED', serverCode: 'token_already_used' });
   });
 });
 
@@ -102,10 +123,37 @@ describe('remote flows by ID', () => {
     expect(native.startRemoteVerification).toHaveBeenCalledWith('rsess_1');
   });
 
+  it('normalises remote-flow cancellation on both platforms', async () => {
+    native.startRemoteEnrollment.mockRejectedValue({ code: 'CANCELLED', message: 'cancelled' });
+    await expect(UseSense.startRemoteEnrollment('enr_1')).rejects.toMatchObject({ code: 'USER_CANCELLED', nativeCode: 'CANCELLED' });
+    native.startRemoteVerification.mockRejectedValue({ code: 'session_cancelled', message: 'cancelled' });
+    await expect(UseSense.startRemoteVerification('rsess_1')).rejects.toMatchObject({
+      code: 'USER_CANCELLED',
+      nativeCode: 'session_cancelled',
+    });
+  });
+
   it('rejects blank IDs before the bridge', async () => {
     await expect(UseSense.startRemoteEnrollment(' ')).rejects.toMatchObject({ code: 'INVALID_CONFIG' });
     await expect(UseSense.startRemoteVerification('')).rejects.toMatchObject({ code: 'INVALID_CONFIG' });
     expect(native.startRemoteEnrollment).not.toHaveBeenCalled();
     expect(native.startRemoteVerification).not.toHaveBeenCalled();
+  });
+});
+
+describe('apiEndpoint', () => {
+  it.each([
+    ['https://staging.api.usesense.ai', 'https://staging.api.usesense.ai/v1'],
+    ['https://staging.api.usesense.ai/', 'https://staging.api.usesense.ai/v1'],
+    ['https://staging.api.usesense.ai/v1', 'https://staging.api.usesense.ai/v1'],
+    ['  https://proxy.example.com/v1/ ', 'https://proxy.example.com/v1'],
+  ])('sends %p to both platforms as %p', async (input, sent) => {
+    await UseSense.initialize({ apiKey: 'sk_sandbox_x', apiEndpoint: input });
+    expect(native.initialize.mock.calls[0][0].apiEndpoint).toBe(sent);
+  });
+
+  it('leaves it unset when not given, so the SDK default applies', async () => {
+    await UseSense.initialize({ apiKey: 'sk_sandbox_x', apiEndpoint: '  ' });
+    expect(native.initialize.mock.calls[0][0].apiEndpoint).toBeUndefined();
   });
 });

@@ -1,6 +1,7 @@
 import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 import type { FlowAppearance, FlowCopy } from './flows';
 import { invalidConfig, validateClientToken, validateRequest } from './validation';
+import { bridged, type UseSenseErrorCode } from './errors';
 
 const LINKING_ERROR =
   `react-native-usesense: the native module could not be found.\n\n` +
@@ -92,8 +93,8 @@ export interface UseSenseConfig {
   /**
    * Override the API endpoint. Defaults to `https://api.usesense.ai/v1`.
    * Only set this if you're pointing at a staging or self-hosted
-   * proxy. Maps to `apiEndpoint` on iOS and `baseUrl` on Android
-   * under the hood.
+   * proxy. Honoured on iOS and Android alike, with or without the
+   * trailing `/v1` (both forms reach the same API).
    */
   apiEndpoint?: string;
   /** SDK-level branding overrides. */
@@ -197,25 +198,24 @@ export interface UseSenseResult {
  */
 export interface UseSenseError {
   /**
-   * Machine-readable error code. One of
-   * `CAMERA_UNAVAILABLE`, `CAMERA_PERMISSION_DENIED`,
-   * `MIC_PERMISSION_DENIED`, `NETWORK_ERROR`, `NETWORK_TIMEOUT`,
-   * `SESSION_EXPIRED`, `UNAUTHORIZED`, `INVALID_TOKEN`,
-   * `SESSION_NOT_FOUND`, `IDENTITY_NOT_FOUND`, `INVALID_REQUEST`,
-   * `INVALID_CONFIG`, `QUOTA_EXCEEDED`, `USER_CANCELLED`,
-   * `session_cancelled`, `sdk_not_initialized`, `no_view_controller`,
-   * `CAPTURE_FAILED`, `ENCODING_FAILED`, `UPLOAD_FAILED`,
-   * `FACE_NOT_DETECTED`, `LOW_LIGHT`, `TIMEOUT`, `SERVER_ERROR`,
-   * `SERVICE_UNAVAILABLE`, `TOKEN_EXPIRED`, `TOKEN_ALREADY_USED`,
-   * `INSUFFICIENT_CREDITS`, `NONCE_MISMATCH`, `UNKNOWN_ERROR`.
+   * Machine-readable error code, the same name on iOS and Android (see
+   * `UseSenseErrorCode` and the README's error code table). The bridge maps
+   * Android's numeric codes to these names; codes outside the list pass
+   * through unchanged.
    */
-  code: string;
+  code: UseSenseErrorCode | string;
   /** Human-readable error message. */
   message: string;
   /** Whether the operation can be retried. */
   isRetryable?: boolean;
-  /** Server-specific error code, if any. */
+  /** The server's own error code (e.g. `token_not_found`), when it sent one. */
   serverCode?: string;
+  /**
+   * The platform's raw code before normalisation: Android's number (an HTTP
+   * status or a client code such as `1002`), or the iOS name. Absent for
+   * errors raised in JS before the bridge (`INVALID_CONFIG`).
+   */
+  nativeCode?: string;
 }
 
 /**
@@ -260,6 +260,17 @@ export interface UseSenseSubscription {
 // ─── Implementation ──────────────────────────────────────────────────────
 
 const eventEmitter = new NativeEventEmitter(UseSenseModule);
+
+/**
+ * The API base both native SDKs accept: no trailing slash, ending in `/v1`.
+ * iOS joins paths onto it (`/sessions/...`); Android drops the `/v1` itself.
+ * So `https://staging.api.usesense.ai` and `.../v1/` mean the same on both.
+ */
+export function normaliseApiEndpoint(endpoint: string | undefined): string | undefined {
+  const trimmed = endpoint?.trim().replace(/\/+$/, '');
+  if (!trimmed) return undefined;
+  return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
+}
 
 /**
  * UseSense React Native plugin.
@@ -308,7 +319,7 @@ export class UseSense {
     return UseSenseModule.initialize({
       apiKey: config.apiKey?.trim() ?? '',
       environment: config.environment ?? 'auto',
-      apiEndpoint: config.apiEndpoint,
+      apiEndpoint: normaliseApiEndpoint(config.apiEndpoint),
       branding: config.branding,
       antispoofOnDeviceEnabled: config.antispoofOnDeviceEnabled ?? false,
       liveSenseV4Enabled: config.liveSenseV4Enabled ?? false,
@@ -327,12 +338,12 @@ export class UseSense {
   ): Promise<UseSenseResult> {
     const invalid = validateRequest(request);
     if (invalid) throw invalid;
-    return UseSenseModule.startVerification({
+    return bridged(() => UseSenseModule.startVerification({
       sessionType: request.sessionType,
       externalUserId: request.externalUserId,
       identityId: request.identityId,
       metadata: request.metadata,
-    });
+    }));
   }
 
   /**
@@ -359,10 +370,10 @@ export class UseSense {
   ): Promise<UseSenseResult> {
     const invalid = validateClientToken(request.clientToken);
     if (invalid) throw invalid;
-    return UseSenseModule.startVerificationWithToken({
+    return bridged(() => UseSenseModule.startVerificationWithToken({
       clientToken: request.clientToken.trim(),
       sessionType: request.sessionType,
-    });
+    }));
   }
 
   /**
@@ -378,7 +389,7 @@ export class UseSense {
     if (!remoteEnrollmentId?.trim()) {
       throw invalidConfig('remoteEnrollmentId must not be blank');
     }
-    return UseSenseModule.startRemoteEnrollment(remoteEnrollmentId.trim());
+    return bridged(() => UseSenseModule.startRemoteEnrollment(remoteEnrollmentId.trim()));
   }
 
   /**
@@ -394,7 +405,7 @@ export class UseSense {
     if (!remoteSessionId?.trim()) {
       throw invalidConfig('remoteSessionId must not be blank');
     }
-    return UseSenseModule.startRemoteVerification(remoteSessionId.trim());
+    return bridged(() => UseSenseModule.startRemoteVerification(remoteSessionId.trim()));
   }
 
   /**
@@ -503,6 +514,9 @@ export interface V4Verdict {
 }
 
 export default UseSense;
+
+// One error code set on both platforms.
+export { normaliseError, type UseSenseErrorCode } from './errors';
 
 // Embedded capture: the same session, drawn inside your own screen.
 export {

@@ -121,9 +121,17 @@ describe('UseSenseView events', () => {
     element.props.onUseSenseComplete({ nativeEvent: { ...result, target: 12 } });
     expect(onComplete).toHaveBeenCalledWith(result);
 
-    const error = { code: 'TOKEN_ALREADY_USED', message: 'used', isRetryable: false };
-    element.props.onUseSenseError({ nativeEvent: { ...error, target: 12 } });
-    expect(onError).toHaveBeenCalledWith(error);
+    // Android's payload: the HTTP status as the code, the server's code beside it.
+    element.props.onUseSenseError({
+      nativeEvent: { code: '404', message: 'Invalid or expired client token.', isRetryable: false, serverCode: 'token_not_found', target: 12 },
+    });
+    expect(onError).toHaveBeenCalledWith({
+      code: 'SESSION_NOT_FOUND',
+      message: 'Invalid or expired client token.',
+      isRetryable: false,
+      serverCode: 'token_not_found',
+      nativeCode: '404',
+    });
 
     element.props.onUseSenseCancel({ nativeEvent: {} });
     expect(onCancel).toHaveBeenCalledTimes(1);

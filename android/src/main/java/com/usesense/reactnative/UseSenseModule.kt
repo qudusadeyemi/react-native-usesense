@@ -66,7 +66,12 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
         val config = UseSenseConfig(
             apiKey = apiKey,
             environment = environment,
-            baseUrl = configMap.getString("baseUrl") ?: UseSenseConfig.DEFAULT_BASE_URL,
+            // The documented JS field is `apiEndpoint` (iOS reads the same one).
+            // The SDK drops a trailing `/v1` itself, so either form works.
+            // `baseUrl` is still read for callers that passed it directly.
+            baseUrl = configMap.optString("apiEndpoint")?.takeIf { it.isNotBlank() }
+                ?: configMap.optString("baseUrl")?.takeIf { it.isNotBlank() }
+                ?: UseSenseConfig.DEFAULT_BASE_URL,
             branding = branding,
             googleCloudProjectNumber = if (configMap.hasKey("googleCloudProjectNumber"))
                 configMap.getDouble("googleCloudProjectNumber").toLong()

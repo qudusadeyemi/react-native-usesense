@@ -268,8 +268,27 @@ class UseSenseModule: RCTEventEmitter {
         if error.code == .userCancelled {
             reject("session_cancelled", "User cancelled the verification session.", nil)
         } else {
-            reject(bridgeErrorCode(error.code), error.message, error)
+            // userInfo reaches JS as `error.userInfo`; the JS layer reads
+            // isRetryable and serverCode from it (as on Android).
+            let nsError = NSError(domain: "UseSense", code: 0, userInfo: errorFields(error))
+            reject(bridgeErrorCode(error.code), error.message, nsError)
         }
+    }
+
+    /// The error fields both platforms send to JS. For HTTP errors `details`
+    /// is the server's own code (UseSenseError.fromHTTP, e.g. `token_expired`);
+    /// other errors use it for free text (a decode failure), which is not sent.
+    static func errorFields(_ error: UseSenseError) -> [String: Any] {
+        var fields: [String: Any] = [
+            "code": bridgeErrorCode(error.code),
+            "message": error.message,
+            "isRetryable": error.isRetryable,
+        ]
+        if let serverCode = error.details,
+           serverCode.range(of: "^[a-z][a-z0-9_]*$", options: .regularExpression) != nil {
+            fields["serverCode"] = serverCode
+        }
+        return fields
     }
 
     static func sessionType(from value: String?) -> SessionType {

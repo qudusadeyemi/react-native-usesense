@@ -37,6 +37,22 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   with liveness, and on Android with the client-token start, a working
   `UseSenseFragment` and remote-flow callbacks).
 - `UseSense.initialize` no longer throws when `apiKey` is missing.
+- **One error code set on both platforms.** Android's numeric codes (an HTTP
+  status such as `404`, or a client code such as `1002`) are now mapped to the
+  iOS names (`SESSION_NOT_FOUND`, `CAMERA_PERMISSION_DENIED`, ...), the same
+  table the iOS SDK applies to HTTP errors. The raw value is kept in the new
+  `UseSenseError.nativeCode`, and iOS now sends `serverCode` too. Cancellation
+  is `USER_CANCELLED` on both (was `CANCELLED` on Android and
+  `session_cancelled` on iOS), `sdk_not_initialized` is `SDK_NOT_INITIALIZED`,
+  and `NO_ACTIVITY` / `no_view_controller` are `NO_HOST_SCREEN`. **Migration:**
+  code that compared against the old Android numbers or the old cancellation
+  strings should switch to the names (or read `nativeCode`). See the README's
+  error code table.
+
+### Fixed
+- `apiEndpoint` was ignored on Android (the bridge read a `baseUrl` field the
+  JS API never sends), so a custom endpoint silently fell back to production.
+  Both platforms now honour `apiEndpoint`, with or without the trailing `/v1`.
 
 ## [2.9.1] - 2026-11-18
 

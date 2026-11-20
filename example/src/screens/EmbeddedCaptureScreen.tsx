@@ -6,8 +6,11 @@ import type { ScreenProps } from '../navigation';
 /**
  * The capture embedded in the app's own screen (<UseSenseView />), under the
  * example's own header and caption, instead of a full-screen native screen.
- * Leaving this screen (Back, or pushing the result) unmounts the view, which
- * ends the capture.
+ * Leaving this screen unmounts the view, which ends the capture.
+ *
+ * On completion this screen is REPLACED by the result, not pushed under it:
+ * its route holds a single-use client token, and Back from the result must
+ * not land on a capture that would start again with that spent token.
  */
 export default function EmbeddedCaptureScreen({ navigation, route }: ScreenProps<'EmbeddedCapture'>) {
   const { launch } = route.params;
@@ -29,7 +32,7 @@ export default function EmbeddedCaptureScreen({ navigation, route }: ScreenProps
           style={styles.capture}
           clientToken={launch.clientToken}
           sessionType={launch.sessionType}
-          onComplete={(result) => navigation.navigate('Result', { result })}
+          onComplete={(result) => navigation.replace('Result', { result })}
           onError={onError}
           onCancel={() => navigation.goBack()}
         />
@@ -37,7 +40,7 @@ export default function EmbeddedCaptureScreen({ navigation, route }: ScreenProps
         <UseSenseView
           style={styles.capture}
           request={launch.request}
-          onComplete={(result) => navigation.navigate('Result', { result })}
+          onComplete={(result) => navigation.replace('Result', { result })}
           onError={onError}
           onCancel={() => navigation.goBack()}
         />

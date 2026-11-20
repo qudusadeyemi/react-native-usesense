@@ -146,3 +146,35 @@ describe('UseSenseView events', () => {
     }).not.toThrow();
   });
 });
+
+describe('UseSenseView single-use client tokens', () => {
+  it.each([
+    ['onUseSenseComplete', { nativeEvent: result }],
+    ['onUseSenseError', { nativeEvent: { code: '500', message: 'x' } }],
+    ['onUseSenseCancel', { nativeEvent: {} }],
+  ])('a view remounted with a token whose session ended (%s) starts nothing', (event, payload) => {
+    const token = `cli_tok_spent_${event}`;
+    const first = mount({ clientToken: token, sessionType: 'liveness' });
+    expect(first.element.type).toBe('RNUseSenseView');
+    first.element.props[event](payload);
+
+    // e.g. Back from the result screen to the screen that held the token.
+    const onError = jest.fn();
+    const again = mount({ clientToken: token, sessionType: 'liveness', onError });
+    expect(again.element.type).toBe('View');
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: 'TOKEN_ALREADY_USED', isRetryable: false }));
+  });
+
+  it('a token whose view is still running can be re-rendered, and other tokens still start', () => {
+    const running = mount({ clientToken: 'cli_tok_running', sessionType: 'enrollment' });
+    expect((running.view.render() as Element).props.launch.clientToken).toBe('cli_tok_running');
+    running.element.props.onUseSenseComplete({ nativeEvent: result });
+    expect(mount({ clientToken: 'cli_tok_fresh', sessionType: 'enrollment' }).element.type).toBe('RNUseSenseView');
+  });
+
+  it('request launches are not affected', () => {
+    const first = mount({ request: { sessionType: 'enrollment' } });
+    first.element.props.onUseSenseComplete({ nativeEvent: result });
+    expect(mount({ request: { sessionType: 'enrollment' } }).element.type).toBe('RNUseSenseView');
+  });
+});

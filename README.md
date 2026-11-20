@@ -394,6 +394,11 @@ function VerifyScreen({ navigation, clientToken }) {
   isRetryable }` the promise methods reject with.
 - Unmounting mid-capture (leaving the screen) ends the capture with no
   callback.
+- A client token is single-use. When the session ends, move on with
+  `replace` (or reset the stack) rather than pushing the next screen over
+  the capture, so Back cannot return to it. A view mounted again with a
+  token whose session already ended reports `onError` with
+  `TOKEN_ALREADY_USED` at once and starts nothing.
 - The SDK asks for camera and microphone permission itself.
 - Give the view the space the camera should fill; full screen works
   best. Lifecycle events still arrive through `UseSense.addListener`.

@@ -112,6 +112,36 @@ function withoutTarget<T extends object>(payload: T): T {
   return copy as T;
 }
 
+/**
+ * Client tokens a `<UseSenseView>` has finished with (a callback fired). A
+ * token is single-use: once its session has ended, the server answers 409
+ * `token_already_used`, and the SDK would show that as an error page inside
+ * the view. A view remounted with such a token (navigating back to the
+ * screen that held it, a parent re-rendering it under a new key) reports
+ * `TOKEN_ALREADY_USED` at once instead and starts nothing. Bounded: only the
+ * most recent tokens are kept.
+ */
+const spentTokens = new Set<string>();
+const SPENT_TOKENS_KEPT = 50;
+
+function markSpent(token: string): void {
+  spentTokens.delete(token);
+  spentTokens.add(token);
+  if (spentTokens.size > SPENT_TOKENS_KEPT) {
+    const oldest = spentTokens.values().next().value;
+    if (oldest !== undefined) spentTokens.delete(oldest);
+  }
+}
+
+function spentTokenError(): UseSenseError {
+  return {
+    code: 'TOKEN_ALREADY_USED',
+    message:
+      'This client token was already used by a UseSenseView. Client tokens are single-use: get a new one from your server.',
+    isRetryable: false,
+  };
+}
+
 function isError(value: NativeLaunch | UseSenseError): value is UseSenseError {
   return (value as UseSenseError).code !== undefined;
 }
@@ -138,7 +168,11 @@ function isError(value: NativeLaunch | UseSenseError): value is UseSenseError {
  *   later are ignored; to start another session remount the view (for
  *   example with a new `key`).
  * - Exactly one of `onComplete`, `onError` or `onCancel` fires. Unmount the
- *   view in it. Unmounting mid-capture ends the capture without a callback.
+ *   view in it, and do not leave a screen holding the same token where the
+ *   person can navigate back to it: a client token is single-use, so a view
+ *   mounted again with a token whose session already ended reports
+ *   `TOKEN_ALREADY_USED` at once and starts nothing. Unmounting mid-capture
+ *   ends the capture without a callback.
  * - The SDK asks for camera (and microphone) permission itself.
  * - Give the view the space the camera should fill; full screen works best.
  * - Lifecycle events still arrive through `UseSense.addListener`.
@@ -149,7 +183,16 @@ export class UseSenseView extends React.Component<UseSenseViewProps> {
 
   constructor(props: UseSenseViewProps) {
     super(props);
-    this.launch = resolveLaunch(props);
+    const launch = resolveLaunch(props);
+    this.launch =
+      !isError(launch) && launch.kind === 'token' && spentTokens.has(launch.clientToken)
+        ? spentTokenError()
+        : launch;
+  }
+
+  /** The session behind this view ended: its token can never start another. */
+  private settle(): void {
+    if (!isError(this.launch) && this.launch.kind === 'token') markSpent(this.launch.clientToken);
   }
 
   componentDidMount(): void {
@@ -157,14 +200,17 @@ export class UseSenseView extends React.Component<UseSenseViewProps> {
   }
 
   private handleComplete = (event: NativeSyntheticEvent<UseSenseResult>) => {
+    this.settle();
     this.props.onComplete?.(withoutTarget(event.nativeEvent));
   };
 
   private handleError = (event: NativeSyntheticEvent<UseSenseError>) => {
+    this.settle();
     this.props.onError?.(normaliseError(withoutTarget(event.nativeEvent)));
   };
 
   private handleCancel = () => {
+    this.settle();
     this.props.onCancel?.();
   };
 

@@ -32,6 +32,11 @@ export interface Navigation {
     name: N,
     ...params: RootStackParamList[N] extends undefined ? [] : [RootStackParamList[N]]
   ): void;
+  /** Swaps the current screen for another, so Back skips it. */
+  replace<N extends RouteName>(
+    name: N,
+    ...params: RootStackParamList[N] extends undefined ? [] : [RootStackParamList[N]]
+  ): void;
   goBack(): void;
 }
 
@@ -64,6 +69,8 @@ export function StackNavigator({
     () => ({
       navigate: (name, ...params) =>
         setStack((s) => [...s, { name, params: params[0] } as Route<RouteName>]),
+      replace: (name, ...params) =>
+        setStack((s) => [...s.slice(0, -1), { name, params: params[0] } as Route<RouteName>]),
       goBack,
     }),
     [goBack],

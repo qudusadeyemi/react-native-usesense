@@ -104,6 +104,13 @@ export function resolveLaunch(props: UseSenseViewProps): NativeLaunch | UseSense
   return { kind: 'token', clientToken: props.clientToken!.trim(), sessionType: props.sessionType };
 }
 
+/** React Native adds the view tag (`target`) to native event payloads; callers get the plain shape. */
+function withoutTarget<T extends object>(payload: T): T {
+  const copy = { ...payload } as Record<string, unknown>;
+  delete copy.target;
+  return copy as T;
+}
+
 function isError(value: NativeLaunch | UseSenseError): value is UseSenseError {
   return (value as UseSenseError).code !== undefined;
 }
@@ -149,11 +156,11 @@ export class UseSenseView extends React.Component<UseSenseViewProps> {
   }
 
   private handleComplete = (event: NativeSyntheticEvent<UseSenseResult>) => {
-    this.props.onComplete?.(event.nativeEvent);
+    this.props.onComplete?.(withoutTarget(event.nativeEvent));
   };
 
   private handleError = (event: NativeSyntheticEvent<UseSenseError>) => {
-    this.props.onError?.(event.nativeEvent);
+    this.props.onError?.(withoutTarget(event.nativeEvent));
   };
 
   private handleCancel = () => {

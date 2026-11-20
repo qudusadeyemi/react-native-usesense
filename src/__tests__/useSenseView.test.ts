@@ -117,11 +117,12 @@ describe('UseSenseView events', () => {
     const onCancel = jest.fn();
     const { element } = mount({ clientToken: 'cli_tok_1', sessionType: 'enrollment', onComplete, onError, onCancel });
 
-    element.props.onUseSenseComplete({ nativeEvent: result });
+    // React Native adds `target` (the view tag) to the payload; it is dropped.
+    element.props.onUseSenseComplete({ nativeEvent: { ...result, target: 12 } });
     expect(onComplete).toHaveBeenCalledWith(result);
 
     const error = { code: 'TOKEN_ALREADY_USED', message: 'used', isRetryable: false };
-    element.props.onUseSenseError({ nativeEvent: error });
+    element.props.onUseSenseError({ nativeEvent: { ...error, target: 12 } });
     expect(onError).toHaveBeenCalledWith(error);
 
     element.props.onUseSenseCancel({ nativeEvent: {} });

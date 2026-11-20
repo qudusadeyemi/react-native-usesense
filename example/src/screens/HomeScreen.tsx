@@ -9,6 +9,7 @@ import {
   Switch,
   ActivityIndicator,
   ScrollView,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -20,6 +21,7 @@ import {
   type SessionType,
 } from 'react-native-usesense';
 import type { Navigation } from '../navigation';
+import { createTokenBody } from '../demoToken';
 
 // Public API base for creating flow runs and for the SDK Flow runner. Sandbox
 // vs production is selected by the API key + the x-environment header.
@@ -166,11 +168,8 @@ export default function HomeScreen({ navigation }: Props) {
           'x-api-key': key,
           'x-environment': useProduction ? 'production' : 'sandbox',
         },
-        body: JSON.stringify({
-          session_type: tokenSessionType,
-          platform: 'react-native',
-          ...(tokenSessionType === 'authentication' ? { identity_id: identityId.trim() } : {}),
-        }),
+        // platform must be the device's: 'ios' or 'android' (the server 400s otherwise).
+        body: JSON.stringify(createTokenBody(tokenSessionType, Platform.OS, identityId)),
       });
       if (!res.ok) {
         throw new Error(`Could not create a client token (HTTP ${res.status}): ${await res.text()}`);

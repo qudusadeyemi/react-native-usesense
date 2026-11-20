@@ -82,17 +82,22 @@ conditional code at the bridge level.
 
 ### Native SDK version management
 
-The plugin depends on specific minimum versions of the native SDKs:
+The plugin always pins the **latest** native SDKs:
 
-| Platform | Manifest | Current floor |
-|----------|----------|---------------|
-| iOS | `react-native-usesense.podspec` → `s.dependency "UseSenseSDK", "~> 4.14.0"` | 4.14.0 |
-| Android | `android/build.gradle` → `implementation "ai.usesense:sdk:4.16.0"` | 4.16.0 |
+| Platform | Pin | Release notes |
+|----------|-----|---------------|
+| iOS | `react-native-usesense.podspec`:  `s.dependency "UseSenseSDK", "~> A.B.C"` | [iOS CHANGELOG](https://github.com/qudusadeyemi/usesense-ios-sdk/blob/main/CHANGELOG.md) |
+| Android | `android/build.gradle`: `ai.usesense:sdk:A.B.C` | [Android CHANGELOG](https://github.com/qudusadeyemi/usesense-android-sdk/blob/main/CHANGELOG.md) |
 
-When the native SDKs ship a new version:
+`scripts/native_pins.py` lists every place a native version appears and CI
+(`native-pins.yml`) fails when any of them is behind Maven Central or CocoaPods.
+An hourly job (`bump-native-pins.yml`) opens a `bot/native-pins` PR here once a
+newer native release is installable. See RELEASING.md.
 
-1. Check the CHANGELOG for each native repo (`qudusadeyemi/usesense-ios-sdk`, `qudusadeyemi/usesense-android-sdk`) and decide whether the plugin needs to bump. Bug fixes usually don't; new public API or removed/renamed symbols do.
-2. Update the version strings in the two manifests above.
+When the native SDKs ship a new version (every native release, bug fixes included):
+
+1. A `bot/native-pins` PR opens here within the hour. To do it by hand: `python3 scripts/native_pins.py bump` and `cd example/ios && pod update UseSenseSDK UseSenseMediaPipe`.
+2. `python3 scripts/native_pins.py check` must pass (CI runs it on every PR).
 3. If the native SDK public API changed, update `ios/UseSenseModule.swift` and `android/src/main/java/com/usesense/reactnative/UseSenseModule.kt` to match. The v1.x → v4.2 bump in this PR is the cautionary tale — doing the rewrite late made it much harder because we had to reconcile a completely rewritten result shape, a completely rewritten config shape, and a completely rewritten session-launch pattern all at once.
 4. Run `npm run typecheck` and `npm test` to catch any TS-side drift.
 5. Bump `package.json` version, add a CHANGELOG entry, tag, push.

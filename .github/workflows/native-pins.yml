@@ -1,0 +1,28 @@
+name: Native SDK pins
+
+# Fails when any place in this wrapper names a native SDK version older than the
+# latest release on Maven Central (ai.usesense:sdk) or CocoaPods (UseSenseSDK).
+# The daily run catches a native release that landed after the last PR.
+# To ship a wrapper that intentionally lags, label the PR `native-pins-lag-ok`.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Native pins are on the latest native SDKs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check every native pin
+        env:
+          NATIVE_PINS_ALLOW_LAG: ${{ contains(github.event.pull_request.labels.*.name, 'native-pins-lag-ok') && '1' || '0' }}
+        run: python3 scripts/native_pins.py check

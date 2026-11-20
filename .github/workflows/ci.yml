@@ -3,6 +3,9 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  # Started by bump-native-pins.yml on its bot/native-pins branch (a PR opened
+  # with GITHUB_TOKEN does not trigger pull_request workflows).
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}

@@ -728,7 +728,7 @@ Proprietary. See [LICENSE](LICENSE).
 
 ## Support
 
-- Documentation: https://watchtower.usesense.ai/developer-docs
+- Documentation: https://docs.usesense.ai
 - Dashboard: https://watchtower.usesense.ai
 - Email: support@usesense.ai
 - Issues: https://github.com/qudusadeyemi/react-native-usesense/issues

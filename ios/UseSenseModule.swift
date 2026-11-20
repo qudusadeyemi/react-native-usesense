@@ -4,9 +4,11 @@ import UseSenseSDK
 
 /// React Native bridge for the UseSense iOS SDK.
 ///
-/// Exposes five JS-callable methods — `initialize`, `startVerification`,
+/// Exposes the JS-callable methods (`initialize`, `startVerification`,
+/// `startVerificationWithToken`, `startRemoteEnrollment`,
+/// `startRemoteVerification`, `startV4Verification`,
 /// `reset`, `isInitialized`, plus RCTEventEmitter `supportedEvents`/
-/// `startObserving`/`stopObserving` — that mirror the native SDK's
+/// `startObserving`/`stopObserving`) that mirror the native SDK's
 /// public API without leaking any internal scoring data through the
 /// bridge.
 ///
@@ -23,9 +25,21 @@ import UseSenseSDK
 @objc(UseSenseModule)
 class UseSenseModule: RCTEventEmitter {
 
-    private var client: UseSense?
+    private var client: UseSense? {
+        get { UseSenseBridgeState.client }
+        set { UseSenseBridgeState.client = newValue }
+    }
     private var eventUnsubscribe: (() -> Void)?
     private var hasListeners = false
+
+    /// The live module, so `<UseSenseView />` sessions reach the same JS
+    /// event stream (`UseSense.addListener`).
+    static weak var current: UseSenseModule?
+
+    override init() {
+        super.init()
+        UseSenseModule.current = self
+    }
 
     // MARK: - RCTEventEmitter
 
@@ -52,10 +66,10 @@ class UseSenseModule: RCTEventEmitter {
     func initialize(_ config: NSDictionary,
                     resolver resolve: @escaping RCTPromiseResolveBlock,
                     rejecter reject: @escaping RCTPromiseRejectBlock) {
-        guard let apiKey = config["apiKey"] as? String, !apiKey.isEmpty else {
-            reject("invalid_config", "apiKey is required", nil)
-            return
-        }
+        // Empty when the app only starts from client tokens: no key on the
+        // device. startVerification then rejects with INVALID_CONFIG.
+        let apiKey = ((config["apiKey"] as? String) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
         let environment: Environment
         switch config["environment"] as? String {
@@ -123,6 +137,7 @@ class UseSenseModule: RCTEventEmitter {
             self?.emitEvent(event)
         }
         client = newClient
+        UseSenseBridgeState.config = sdkConfig
 
         resolve(nil)
     }
@@ -138,13 +153,153 @@ class UseSenseModule: RCTEventEmitter {
             return
         }
 
-        let sessionType: SessionType
-        switch request["sessionType"] as? String {
-        case "authentication": sessionType = .authentication
-        case "liveness": sessionType = .liveness
-        default: sessionType = .enrollment
+        guard UseSenseBridgeState.hasApiKey else {
+            reject("INVALID_CONFIG",
+                   "No API key: pass apiKey to initialize(), or start from a client token with startVerificationWithToken()",
+                   nil)
+            return
         }
 
+        let nativeRequest = Self.verificationRequest(from: request)
+        DispatchQueue.main.async {
+            self.present(session: client.startVerification(request: nativeRequest),
+                         resolve: resolve, reject: reject)
+        }
+    }
+
+    /// Server-side init: the app holds a single-use client token from the
+    /// integrator's `POST /v1/sessions/create-token`, never an API key. Same
+    /// capture, result and error mapping as `startVerification`.
+    @objc
+    func startVerificationWithToken(_ request: NSDictionary,
+                                    resolver resolve: @escaping RCTPromiseResolveBlock,
+                                    rejecter reject: @escaping RCTPromiseRejectBlock) {
+        let clientToken = ((request["clientToken"] as? String) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clientToken.isEmpty else {
+            reject("INVALID_CONFIG", "clientToken must not be blank", nil)
+            return
+        }
+        let sessionType = Self.sessionType(from: request["sessionType"] as? String)
+        DispatchQueue.main.async {
+            let session = UseSenseBridgeState.tokenClient()
+                .createSessionWithToken(clientToken: clientToken, sessionType: sessionType)
+            self.present(session: session, resolve: resolve, reject: reject)
+        }
+    }
+
+    // MARK: - Remote enrollment / verification by ID
+
+    /// Hosted remote enrollment; resolves `{ decision }`.
+    @objc
+    func startRemoteEnrollment(_ remoteEnrollmentId: String,
+                               resolver resolve: @escaping RCTPromiseResolveBlock,
+                               rejecter reject: @escaping RCTPromiseRejectBlock) {
+        guard let config = UseSenseBridgeState.config, client != nil else {
+            reject("sdk_not_initialized", "UseSense SDK is not initialized. Call initialize() first.", nil)
+            return
+        }
+        DispatchQueue.main.async {
+            let vc = HostedEnrollmentViewController(
+                enrollmentId: remoteEnrollmentId, config: config,
+                onComplete: Self.remoteCompletion(resolve: resolve, reject: reject))
+            self.presentFullScreen(vc, reject: reject)
+        }
+    }
+
+    /// Hosted remote verification; resolves `{ decision }` (`DISPUTED` included).
+    @objc
+    func startRemoteVerification(_ remoteSessionId: String,
+                                 resolver resolve: @escaping RCTPromiseResolveBlock,
+                                 rejecter reject: @escaping RCTPromiseRejectBlock) {
+        guard let config = UseSenseBridgeState.config, client != nil else {
+            reject("sdk_not_initialized", "UseSense SDK is not initialized. Call initialize() first.", nil)
+            return
+        }
+        DispatchQueue.main.async {
+            let vc = HostedVerificationViewController(
+                remoteSessionId: remoteSessionId, config: config,
+                onComplete: Self.remoteCompletion(resolve: resolve, reject: reject))
+            self.presentFullScreen(vc, reject: reject)
+        }
+    }
+
+    // MARK: - Presentation
+
+    /// Full-screen capture for a session; the controller dismisses itself
+    /// and then reports.
+    private func present(session: UseSenseSession,
+                         resolve: @escaping RCTPromiseResolveBlock,
+                         reject: @escaping RCTPromiseRejectBlock) {
+        let vc = UseSenseViewController(session: session) { result in
+            switch result {
+            case .success(let decision):
+                resolve(Self.redactedResultDict(decision))
+            case .failure(let error):
+                Self.reject(reject, with: error)
+            }
+        }
+        presentFullScreen(vc, reject: reject)
+    }
+
+    private func presentFullScreen(_ vc: UIViewController, reject: @escaping RCTPromiseRejectBlock) {
+        guard let rootVC = Self.topmostViewController() else {
+            reject("no_view_controller",
+                   "No view controller available to present the camera UI.",
+                   nil)
+            return
+        }
+        vc.modalPresentationStyle = .fullScreen
+        rootVC.present(vc, animated: true)
+    }
+
+    private static func remoteCompletion(resolve: @escaping RCTPromiseResolveBlock,
+                                         reject: @escaping RCTPromiseRejectBlock)
+        -> (Result<String, UseSenseError>) -> Void {
+        return { result in
+            switch result {
+            case .success(let decision): resolve(["decision": decision])
+            case .failure(let error): Self.reject(reject, with: error)
+            }
+        }
+    }
+
+    static func reject(_ reject: RCTPromiseRejectBlock, with error: UseSenseError) {
+        if error.code == .userCancelled {
+            reject("session_cancelled", "User cancelled the verification session.", nil)
+        } else {
+            // userInfo reaches JS as `error.userInfo`; the JS layer reads
+            // isRetryable and serverCode from it (as on Android).
+            let nsError = NSError(domain: "UseSense", code: 0, userInfo: errorFields(error))
+            reject(bridgeErrorCode(error.code), error.message, nsError)
+        }
+    }
+
+    /// The error fields both platforms send to JS. For HTTP errors `details`
+    /// is the server's own code (UseSenseError.fromHTTP, e.g. `token_expired`);
+    /// other errors use it for free text (a decode failure), which is not sent.
+    static func errorFields(_ error: UseSenseError) -> [String: Any] {
+        var fields: [String: Any] = [
+            "code": bridgeErrorCode(error.code),
+            "message": error.message,
+            "isRetryable": error.isRetryable,
+        ]
+        if let serverCode = error.details,
+           serverCode.range(of: "^[a-z][a-z0-9_]*$", options: .regularExpression) != nil {
+            fields["serverCode"] = serverCode
+        }
+        return fields
+    }
+
+    static func sessionType(from value: String?) -> SessionType {
+        switch value {
+        case "authentication": return .authentication
+        case "liveness": return .liveness
+        default: return .enrollment
+        }
+    }
+
+    static func verificationRequest(from request: NSDictionary) -> VerificationRequest {
         // The native iOS `VerificationRequest` takes an `AnyCodableValue`
         // map for metadata. RN can only pass plain JSON so we coerce
         // every value to a string — matches what the Flutter plugin
@@ -157,46 +312,12 @@ class UseSenseModule: RCTEventEmitter {
             if let d = value as? Double { return .double(d) }
             return .string(String(describing: value))
         }
-
-        let nativeRequest = VerificationRequest(
-            sessionType: sessionType,
+        return VerificationRequest(
+            sessionType: sessionType(from: request["sessionType"] as? String),
             externalUserId: request["externalUserId"] as? String,
             identityId: request["identityId"] as? String,
             metadata: metadata
         )
-
-        DispatchQueue.main.async {
-            guard let rootVC = Self.topmostViewController() else {
-                reject("no_view_controller",
-                       "No view controller available to present the camera UI.",
-                       nil)
-                return
-            }
-
-            let session = client.startVerification(request: nativeRequest)
-            let vc = UseSenseViewController(session: session) { [weak rootVC] result in
-                // The view controller dismisses itself on the main
-                // thread before invoking this closure. We're safe to
-                // resolve/reject directly without hopping.
-                _ = rootVC
-                switch result {
-                case .success(let decision):
-                    resolve(Self.redactedResultDict(decision))
-                case .failure(let error):
-                    if error.code == .userCancelled {
-                        reject("session_cancelled",
-                               "User cancelled the verification session.",
-                               nil)
-                    } else {
-                        reject(Self.bridgeErrorCode(error.code),
-                               error.message,
-                               error)
-                    }
-                }
-            }
-            vc.modalPresentationStyle = .fullScreen
-            rootVC.present(vc, animated: true)
-        }
     }
 
     // MARK: - LiveSense v4 (R-1)
@@ -249,6 +370,7 @@ class UseSenseModule: RCTEventEmitter {
         eventUnsubscribe = nil
         client?.reset()
         client = nil
+        UseSenseBridgeState.config = nil
         resolve(nil)
     }
 
@@ -260,7 +382,7 @@ class UseSenseModule: RCTEventEmitter {
 
     // MARK: - Private helpers
 
-    private func emitEvent(_ event: UseSenseEvent) {
+    func emitEvent(_ event: UseSenseEvent) {
         guard hasListeners else { return }
         let eventTypeString = Self.eventTypeString(event.type)
         let body: [String: Any] = [
@@ -277,7 +399,7 @@ class UseSenseModule: RCTEventEmitter {
     /// dict the JS API exposes. Adding or returning anything beyond
     /// these five fields would leak internal scoring data through the
     /// bridge — do NOT add channel/liveness/matchsense scores here.
-    private static func redactedResultDict(_ decision: RedactedDecisionObject) -> [String: Any] {
+    static func redactedResultDict(_ decision: RedactedDecisionObject) -> [String: Any] {
         return [
             "sessionId": decision.sessionId,
             "sessionType": decision.sessionType as Any,
@@ -292,7 +414,7 @@ class UseSenseModule: RCTEventEmitter {
         ]
     }
 
-    private static func bridgeErrorCode(_ code: UseSenseErrorCode) -> String {
+    static func bridgeErrorCode(_ code: UseSenseErrorCode) -> String {
         // Return the raw error code string (e.g. "NETWORK_ERROR"). JS
         // consumers can key off this via UseSenseError.code. Matches the
         // string-valued error codes the Flutter plugin emits.

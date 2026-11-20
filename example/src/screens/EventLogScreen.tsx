@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { UseSense, UseSenseEvent } from 'react-native-usesense';
+import { UseSense, UseSenseError, UseSenseEvent } from 'react-native-usesense';
 import EventItem from '../components/EventItem';
 
 interface TimestampedEvent {
@@ -57,8 +57,8 @@ export default function EventLogScreen() {
     try {
       await UseSense.startVerification({ sessionType: 'enrollment' });
     } catch (error) {
-      const err = error as any;
-      if (err.code !== 'session_cancelled') {
+      const err = error as UseSenseError;
+      if (err.code !== 'USER_CANCELLED') {
         Alert.alert('Session Error', err.message);
       }
     }

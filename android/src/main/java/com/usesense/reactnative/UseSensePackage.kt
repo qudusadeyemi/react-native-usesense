@@ -19,6 +19,7 @@ class UseSensePackage : ReactPackage {
     }
 
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
-        return emptyList()
+        // <UseSenseView />: the embedded capture (UseSenseFragment).
+        return listOf(UseSenseViewManager())
     }
 }

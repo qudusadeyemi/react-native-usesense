@@ -1,18 +1,24 @@
 /**
  * A minimal stack navigator for the example app.
  *
- * The example has four screens and needs push, back and typed params, so it
+ * The example has a handful of screens and needs push, back and typed params, so it
  * keeps no navigation library (and no extra native modules) between an
  * integrator and the plugin. Screens receive `navigation` and `route` props
  * shaped like React Navigation's, so they read the same way.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type { UseSenseResult } from 'react-native-usesense';
+import type { SessionType, UseSenseResult, VerificationRequest } from 'react-native-usesense';
+
+/** What the embedded capture screen starts from. */
+export type EmbeddedLaunch =
+  | { kind: 'token'; clientToken: string; sessionType: SessionType }
+  | { kind: 'request'; request: VerificationRequest };
 
 export type RootStackParamList = {
   Home: undefined;
   Result: { result: UseSenseResult };
+  EmbeddedCapture: { launch: EmbeddedLaunch };
   EventLog: undefined;
   DeviceCheck: undefined;
 };
@@ -23,6 +29,11 @@ export type Route<N extends RouteName> = { name: N; params: RootStackParamList[N
 
 export interface Navigation {
   navigate<N extends RouteName>(
+    name: N,
+    ...params: RootStackParamList[N] extends undefined ? [] : [RootStackParamList[N]]
+  ): void;
+  /** Swaps the current screen for another, so Back skips it. */
+  replace<N extends RouteName>(
     name: N,
     ...params: RootStackParamList[N] extends undefined ? [] : [RootStackParamList[N]]
   ): void;
@@ -58,6 +69,8 @@ export function StackNavigator({
     () => ({
       navigate: (name, ...params) =>
         setStack((s) => [...s, { name, params: params[0] } as Route<RouteName>]),
+      replace: (name, ...params) =>
+        setStack((s) => [...s.slice(0, -1), { name, params: params[0] } as Route<RouteName>]),
       goBack,
     }),
     [goBack],

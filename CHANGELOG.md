@@ -4,6 +4,22 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.10.0] - 2026-11-20
+
+### Added
+- **`sessionType: 'liveness'`**: a liveness-only session that checks a real
+  person is in front of the camera. The server creates no identity, enrols no
+  face and runs no 1:N duplicate search. Costs 1 credit. The iOS and Android
+  bridges now map `"liveness"` to the native `SessionType` (before, any value
+  other than `"authentication"` became enrollment). `startVerification`
+  rejects with `INVALID_CONFIG` when an `identityId` is passed with
+  `liveness`, as the native SDKs and the server (400) do.
+
+### Changed
+- Native SDKs: iOS `UseSenseSDK` `~> 4.13.1` → **`~> 4.14.0`** (>= 4.14.0,
+  < 4.15.0), Android `ai.usesense:sdk` 4.15.0 → **4.16.0** (the first versions
+  with liveness).
+
 ## [2.9.1] - 2026-11-18
 
 ### Changed

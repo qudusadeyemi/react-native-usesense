@@ -49,7 +49,7 @@ cd ios && pod install
 
 The native Sense iOS SDK is installed automatically as a CocoaPod
 dependency from the public CocoaPods trunk (`UseSenseSDK`, pinned to
-`~> 4.13.1`). Add required permissions to your `Info.plist`:
+`~> 4.14.0`). Add required permissions to your `Info.plist`:
 
 ```xml
 <key>NSCameraUsageDescription</key>
@@ -233,7 +233,7 @@ check; a token lasts 15 minutes), `nonce_mismatch`, `invalid_input`, `out_of_ord
 once, then finish once), `not_found`, `unavailable`, `network_error`, `timeout` (retried
 once by the SDK already), `invalid_config`, `cancelled`. The app is never told the score;
 read it on your server with `GET /v1/device-checks/:id`. Needs native SDKs iOS 4.13.1 and
-Android 4.15.0 (pinned by this package).
+Android 4.15.0 or later (this package pins newer ones).
 
 ## Configuration
 
@@ -299,6 +299,25 @@ const result = await UseSense.startVerification({
 
 if (result.isApproved) {
   // Identity verified. Proceed with login / transaction / action.
+}
+```
+
+### Liveness only
+
+Checks that a real person is in front of the camera, and nothing
+else. No identity is created, no face is enrolled and no 1:N
+duplicate search runs. A liveness session costs 1 credit. Do not
+pass an `identityId`: `startVerification` rejects with
+`INVALID_CONFIG` (the server rejects it with a 400).
+
+```typescript
+const result = await UseSense.startVerification({
+  sessionType: 'liveness',
+  externalUserId: 'user_12345', // optional, for your own records
+});
+
+if (result.isApproved) {
+  // A live person completed the check.
 }
 ```
 

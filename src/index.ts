@@ -25,8 +25,13 @@ if (!UseSenseModule) {
  */
 export type UseSenseEnvironment = 'sandbox' | 'production' | 'auto';
 
-/** Type of verification session. */
-export type SessionType = 'enrollment' | 'authentication';
+/**
+ * Type of verification session. `liveness` checks that a real person is in
+ * front of the camera and nothing else: no identity is created, no face is
+ * enrolled and no 1:N duplicate search runs. It must not carry an
+ * `identityId` (the server returns 400).
+ */
+export type SessionType = 'enrollment' | 'authentication' | 'liveness';
 
 /**
  * Decision returned by the native SDK.
@@ -117,7 +122,7 @@ export interface VerificationRequest {
   externalUserId?: string;
   /**
    * Required for `authentication` sessions. The previously-enrolled
-   * identity you're verifying against.
+   * identity you're verifying against. Must not be set for `liveness`.
    */
   identityId?: string;
   /** Custom key-value pairs attached to the session. */
@@ -290,6 +295,15 @@ export class UseSense {
   static async startVerification(
     request: VerificationRequest,
   ): Promise<UseSenseResult> {
+    if (request.sessionType === 'liveness' && request.identityId?.trim()) {
+      // Mirrors the native SDKs and the server (400 for this combination).
+      const err: UseSenseError = {
+        code: 'INVALID_CONFIG',
+        message: 'identityId must not be set for liveness sessions',
+        isRetryable: false,
+      };
+      throw err;
+    }
     return UseSenseModule.startVerification({
       sessionType: request.sessionType,
       externalUserId: request.externalUserId,

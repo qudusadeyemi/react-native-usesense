@@ -138,9 +138,12 @@ class UseSenseModule: RCTEventEmitter {
             return
         }
 
-        let sessionType: SessionType = (request["sessionType"] as? String) == "authentication"
-            ? .authentication
-            : .enrollment
+        let sessionType: SessionType
+        switch request["sessionType"] as? String {
+        case "authentication": sessionType = .authentication
+        case "liveness": sessionType = .liveness
+        default: sessionType = .enrollment
+        }
 
         // The native iOS `VerificationRequest` takes an `AnyCodableValue`
         // map for metadata. RN can only pass plain JSON so we coerce

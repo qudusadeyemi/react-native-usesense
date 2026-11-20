@@ -88,6 +88,7 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
 
         val sessionType = when (requestMap.getString("sessionType")) {
             "authentication" -> SessionType.AUTHENTICATION
+            "liveness" -> SessionType.LIVENESS
             else -> SessionType.ENROLLMENT
         }
 

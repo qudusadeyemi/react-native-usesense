@@ -82,7 +82,8 @@ dependencies {
     // checks.
     // 4.15.0 is the floor: the headless silent device check for Your KYC
     // (UseSense.deviceCheck), bridged as deviceCheck().
-    implementation "ai.usesense:sdk:4.15.0"
+    // 4.16.0 is the floor: SessionType.LIVENESS (liveness-only sessions).
+    implementation "ai.usesense:sdk:4.16.0"
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${safeExtGet('kotlinVersion', '2.0.0')}"
 }

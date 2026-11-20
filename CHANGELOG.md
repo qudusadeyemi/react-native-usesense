@@ -4,6 +4,56 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.10.0] - 2026-11-20
+
+### Added
+- **`sessionType: 'liveness'`**: a liveness-only session that checks a real
+  person is in front of the camera. The server creates no identity, enrols no
+  face and runs no 1:N duplicate search. Costs 1 credit. The iOS and Android
+  bridges now map `"liveness"` to the native `SessionType` (before, any value
+  other than `"authentication"` became enrollment). `startVerification`
+  rejects with `INVALID_CONFIG` when an `identityId` is passed with
+  `liveness`, as the native SDKs and the server (400) do.
+- **Keep the API key off the device**: `UseSense.startVerificationWithToken({
+  clientToken, sessionType })` starts a verification from the single-use
+  `client_token` your server gets from `POST /v1/sessions/create-token`; the
+  native SDK exchanges it (`POST /v1/sessions/exchange-token`). Same capture,
+  result and error mapping as `startVerification`. `initialize` is optional
+  for it, and `UseSenseConfig.apiKey` is now optional (token-only apps ship no
+  key; `startVerification` then rejects with `INVALID_CONFIG`).
+- **Embedded capture**: `<UseSenseView />` draws the capture inside your own
+  screen (Android `UseSenseFragment`, iOS `UseSenseViewController` as a child
+  view controller), from a `request` or a `clientToken`, with the same
+  branding (code wins), copy and result, reported through `onComplete`,
+  `onError` and `onCancel`. Old and New Architecture (interop).
+- **Remote enrollment and verification by ID**:
+  `UseSense.startRemoteEnrollment(id)` and `startRemoteVerification(id)`
+  resolve with `{ decision }` (`DISPUTED` when the person disputes a remote
+  verification).
+
+### Changed
+- Native SDKs: iOS `UseSenseSDK` `~> 4.13.1` → **`~> 4.14.0`** (>= 4.14.0,
+  < 4.15.0), Android `ai.usesense:sdk` 4.15.0 → **4.16.0** (the first versions
+  with liveness, and on Android with the client-token start, a working
+  `UseSenseFragment` and remote-flow callbacks).
+- `UseSense.initialize` no longer throws when `apiKey` is missing.
+- **One error code set on both platforms.** Android's numeric codes (an HTTP
+  status such as `404`, or a client code such as `1002`) are now mapped to the
+  iOS names (`SESSION_NOT_FOUND`, `CAMERA_PERMISSION_DENIED`, ...), the same
+  table the iOS SDK applies to HTTP errors. The raw value is kept in the new
+  `UseSenseError.nativeCode`, and iOS now sends `serverCode` too. Cancellation
+  is `USER_CANCELLED` on both (was `CANCELLED` on Android and
+  `session_cancelled` on iOS), `sdk_not_initialized` is `SDK_NOT_INITIALIZED`,
+  and `NO_ACTIVITY` / `no_view_controller` are `NO_HOST_SCREEN`. **Migration:**
+  code that compared against the old Android numbers or the old cancellation
+  strings should switch to the names (or read `nativeCode`). See the README's
+  error code table.
+
+### Fixed
+- `apiEndpoint` was ignored on Android (the bridge read a `baseUrl` field the
+  JS API never sends), so a custom endpoint silently fell back to production.
+  Both platforms now honour `apiEndpoint`, with or without the trailing `/v1`.
+
 ## [2.9.1] - 2026-11-18
 
 ### Changed

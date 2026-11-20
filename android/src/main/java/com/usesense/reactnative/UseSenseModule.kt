@@ -16,8 +16,9 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun initialize(configMap: ReadableMap) {
-        val apiKey = configMap.getString("apiKey")
-            ?: throw IllegalArgumentException("apiKey is required")
+        // Blank when the app only starts from client tokens (no key on the
+        // device); the SDK then fails startVerification with INVALID_CONFIG.
+        val apiKey = configMap.optString("apiKey")?.trim() ?: ""
 
         val branding = if (configMap.hasKey("branding")) {
             val b = configMap.getMap("branding")
@@ -65,7 +66,12 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
         val config = UseSenseConfig(
             apiKey = apiKey,
             environment = environment,
-            baseUrl = configMap.getString("baseUrl") ?: UseSenseConfig.DEFAULT_BASE_URL,
+            // The documented JS field is `apiEndpoint` (iOS reads the same one).
+            // The SDK drops a trailing `/v1` itself, so either form works.
+            // `baseUrl` is still read for callers that passed it directly.
+            baseUrl = configMap.optString("apiEndpoint")?.takeIf { it.isNotBlank() }
+                ?: configMap.optString("baseUrl")?.takeIf { it.isNotBlank() }
+                ?: UseSenseConfig.DEFAULT_BASE_URL,
             branding = branding,
             googleCloudProjectNumber = if (configMap.hasKey("googleCloudProjectNumber"))
                 configMap.getDouble("googleCloudProjectNumber").toLong()
@@ -86,10 +92,7 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
             return
         }
 
-        val sessionType = when (requestMap.getString("sessionType")) {
-            "authentication" -> SessionType.AUTHENTICATION
-            else -> SessionType.ENROLLMENT
-        }
+        val sessionType = sessionTypeOf(requestMap.optString("sessionType"))
 
         val metadata: Map<String, Any>? = if (requestMap.hasKey("metadata")) {
             requestMap.getMap("metadata")?.toHashMap()
@@ -102,40 +105,69 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
             metadata = metadata,
         )
 
-        UseSense.startVerification(activity, request, object : UseSenseCallback {
-            override fun onSuccess(result: UseSenseResult) {
-                val map = Arguments.createMap().apply {
-                    putString("sessionId", result.sessionId)
-                    putString("sessionType", result.sessionType)
-                    putString("identityId", result.identityId)
-                    putString("decision", result.decision)
-                    putString("timestamp", result.timestamp)
-                    putBoolean("isApproved", result.isApproved)
-                    putBoolean("isRejected", result.isRejected)
-                    putBoolean("isPendingReview", result.isPendingReview)
-                }
-                promise.resolve(map)
-            }
+        UseSense.startVerification(activity, request, promiseCallback(promise))
+    }
 
-            override fun onError(error: UseSenseError) {
-                val details = Arguments.createMap().apply {
-                    putInt("code", error.code)
-                    putString("serverCode", error.serverCode)
-                    putString("message", error.message)
-                    putBoolean("isRetryable", error.isRetryable)
-                }
-                promise.reject(
-                    error.code.toString(),
-                    error.message,
-                    Exception(error.message),
-                    details,
-                )
-            }
+    /**
+     * Server-side init: the app holds a single-use client token from the
+     * integrator's `POST /v1/sessions/create-token`, never an API key. Same
+     * capture, result and error mapping as [startVerification].
+     */
+    @ReactMethod
+    fun startVerificationWithToken(requestMap: ReadableMap, promise: Promise) {
+        val activity = currentActivity ?: run {
+            promise.reject("NO_ACTIVITY", "No current activity available")
+            return
+        }
+        val clientToken = requestMap.optString("clientToken") ?: ""
+        UseSense.startVerificationWithToken(
+            activity,
+            clientToken,
+            sessionTypeOf(requestMap.optString("sessionType")),
+            promiseCallback(promise),
+        )
+    }
 
-            override fun onCancelled() {
-                promise.reject("CANCELLED", "Verification was cancelled by the user")
-            }
-        })
+    /** Hosted remote enrollment by ID; resolves `{ decision }`. */
+    @ReactMethod
+    fun startRemoteEnrollment(remoteEnrollmentId: String, promise: Promise) {
+        val activity = currentActivity ?: run {
+            promise.reject("NO_ACTIVITY", "No current activity available")
+            return
+        }
+        if (!UseSense.isInitialized) {
+            promise.reject("sdk_not_initialized", "UseSense SDK is not initialized. Call initialize() first.")
+            return
+        }
+        UseSense.startRemoteEnrollment(activity, remoteEnrollmentId, remoteCallback(promise))
+    }
+
+    /** Hosted remote verification by ID; resolves `{ decision }` (DISPUTED included). */
+    @ReactMethod
+    fun startRemoteVerification(remoteSessionId: String, promise: Promise) {
+        val activity = currentActivity ?: run {
+            promise.reject("NO_ACTIVITY", "No current activity available")
+            return
+        }
+        if (!UseSense.isInitialized) {
+            promise.reject("sdk_not_initialized", "UseSense SDK is not initialized. Call initialize() first.")
+            return
+        }
+        UseSense.startRemoteVerification(activity, remoteSessionId, remoteCallback(promise))
+    }
+
+    private fun promiseCallback(promise: Promise) = object : UseSenseCallback {
+        override fun onSuccess(result: UseSenseResult) = promise.resolve(resultMap(result))
+        override fun onError(error: UseSenseError) = rejectWith(promise, error)
+        override fun onCancelled() = promise.reject("CANCELLED", "Verification was cancelled by the user")
+    }
+
+    private fun remoteCallback(promise: Promise) = object : UseSenseCallback {
+        override fun onSuccess(result: UseSenseResult) {
+            promise.resolve(Arguments.createMap().apply { putString("decision", result.decision) })
+        }
+        override fun onError(error: UseSenseError) = rejectWith(promise, error)
+        override fun onCancelled() = promise.reject("CANCELLED", "Verification was cancelled by the user")
     }
 
     /**
@@ -252,6 +284,37 @@ class UseSenseModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun removeListeners(count: Int) {
         // Required for NativeEventEmitter
+    }
+
+    companion object {
+        fun sessionTypeOf(value: String?): SessionType = when (value) {
+            "authentication" -> SessionType.AUTHENTICATION
+            "liveness" -> SessionType.LIVENESS
+            else -> SessionType.ENROLLMENT
+        }
+
+        /** The redacted result: the only shape that crosses the bridge. */
+        fun resultMap(result: UseSenseResult): WritableMap = Arguments.createMap().apply {
+            putString("sessionId", result.sessionId)
+            putString("sessionType", result.sessionType)
+            putString("identityId", result.identityId)
+            putString("decision", result.decision)
+            putString("timestamp", result.timestamp)
+            putBoolean("isApproved", result.isApproved)
+            putBoolean("isRejected", result.isRejected)
+            putBoolean("isPendingReview", result.isPendingReview)
+        }
+
+        fun errorMap(error: UseSenseError): WritableMap = Arguments.createMap().apply {
+            putInt("code", error.code)
+            putString("serverCode", error.serverCode)
+            putString("message", error.message)
+            putBoolean("isRetryable", error.isRetryable)
+        }
+
+        fun rejectWith(promise: Promise, error: UseSenseError) {
+            promise.reject(error.code.toString(), error.message, Exception(error.message), errorMap(error))
+        }
     }
 
     private fun ReadableMap.optString(key: String): String? =

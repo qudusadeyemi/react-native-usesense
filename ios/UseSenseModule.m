@@ -25,6 +25,20 @@ RCT_EXTERN_METHOD(startVerification:(NSDictionary *)request
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+// Server-side init: start from a single-use client token (no API key on device)
+RCT_EXTERN_METHOD(startVerificationWithToken:(NSDictionary *)request
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+// Hosted remote enrollment / verification by ID
+RCT_EXTERN_METHOD(startRemoteEnrollment:(NSString *)remoteEnrollmentId
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(startRemoteVerification:(NSString *)remoteSessionId
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 // LiveSense v4 passthrough (R-1)
 RCT_EXTERN_METHOD(startV4Verification:(NSDictionary *)request
                   resolver:(RCTPromiseResolveBlock)resolve

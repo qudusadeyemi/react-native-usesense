@@ -1,5 +1,7 @@
 import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 import type { FlowAppearance, FlowCopy } from './flows';
+import { invalidConfig, validateClientToken, validateRequest } from './validation';
+import { bridged, type UseSenseErrorCode } from './errors';
 
 const LINKING_ERROR =
   `react-native-usesense: the native module could not be found.\n\n` +
@@ -25,8 +27,13 @@ if (!UseSenseModule) {
  */
 export type UseSenseEnvironment = 'sandbox' | 'production' | 'auto';
 
-/** Type of verification session. */
-export type SessionType = 'enrollment' | 'authentication';
+/**
+ * Type of verification session. `liveness` checks that a real person is in
+ * front of the camera and nothing else: no identity is created, no face is
+ * enrolled and no 1:N duplicate search runs. It must not carry an
+ * `identityId` (the server returns 400).
+ */
+export type SessionType = 'enrollment' | 'authentication' | 'liveness';
 
 /**
  * Decision returned by the native SDK.
@@ -68,19 +75,26 @@ export interface BrandingConfig {
 }
 
 /**
- * Configuration for `UseSense.initialize`. The minimum required
- * field is the API key; every other field has a sensible default.
+ * Configuration for `UseSense.initialize`. Every field has a sensible
+ * default.
  */
 export interface UseSenseConfig {
-  /** API key from watchtower.usesense.ai. */
-  apiKey: string;
+  /**
+   * API key from watchtower.usesense.ai. Needed for `startVerification`
+   * and `<UseSenseView request={...} />`. Leave it out when the app only
+   * starts from client tokens (`startVerificationWithToken`,
+   * `<UseSenseView clientToken={...} />`), so no key ships on the device;
+   * `initialize` then only sets the environment, endpoint, branding and
+   * capture options.
+   */
+  apiKey?: string;
   /** Target environment. Defaults to `auto` (detected from key prefix). */
   environment?: UseSenseEnvironment;
   /**
    * Override the API endpoint. Defaults to `https://api.usesense.ai/v1`.
    * Only set this if you're pointing at a staging or self-hosted
-   * proxy. Maps to `apiEndpoint` on iOS and `baseUrl` on Android
-   * under the hood.
+   * proxy. Honoured on iOS and Android alike, with or without the
+   * trailing `/v1` (both forms reach the same API).
    */
   apiEndpoint?: string;
   /** SDK-level branding overrides. */
@@ -117,11 +131,39 @@ export interface VerificationRequest {
   externalUserId?: string;
   /**
    * Required for `authentication` sessions. The previously-enrolled
-   * identity you're verifying against.
+   * identity you're verifying against. Must not be set for `liveness`.
    */
   identityId?: string;
   /** Custom key-value pairs attached to the session. */
   metadata?: Record<string, string | number | boolean>;
+}
+
+/**
+ * Request to start a verification from a client token
+ * (`startVerificationWithToken`, `<UseSenseView clientToken />`).
+ */
+export interface TokenVerificationRequest {
+  /**
+   * The single-use `client_token` your server got from
+   * `POST /v1/sessions/create-token`.
+   */
+  clientToken: string;
+  /**
+   * The session type your server passed to `create-token`. The exchange
+   * response does not repeat it, and it picks the capture screens' copy.
+   */
+  sessionType: SessionType;
+}
+
+/**
+ * Outcome of a hosted remote flow. `DISPUTED` is remote verification
+ * only: the person disputed the action instead of verifying it.
+ */
+export type RemoteDecision = Decision | 'DISPUTED';
+
+/** Result of `startRemoteEnrollment` / `startRemoteVerification`. */
+export interface RemoteFlowResult {
+  decision: RemoteDecision;
 }
 
 /**
@@ -156,25 +198,24 @@ export interface UseSenseResult {
  */
 export interface UseSenseError {
   /**
-   * Machine-readable error code. One of
-   * `CAMERA_UNAVAILABLE`, `CAMERA_PERMISSION_DENIED`,
-   * `MIC_PERMISSION_DENIED`, `NETWORK_ERROR`, `NETWORK_TIMEOUT`,
-   * `SESSION_EXPIRED`, `UNAUTHORIZED`, `INVALID_TOKEN`,
-   * `SESSION_NOT_FOUND`, `IDENTITY_NOT_FOUND`, `INVALID_REQUEST`,
-   * `INVALID_CONFIG`, `QUOTA_EXCEEDED`, `USER_CANCELLED`,
-   * `session_cancelled`, `sdk_not_initialized`, `no_view_controller`,
-   * `CAPTURE_FAILED`, `ENCODING_FAILED`, `UPLOAD_FAILED`,
-   * `FACE_NOT_DETECTED`, `LOW_LIGHT`, `TIMEOUT`, `SERVER_ERROR`,
-   * `SERVICE_UNAVAILABLE`, `TOKEN_EXPIRED`, `TOKEN_ALREADY_USED`,
-   * `INSUFFICIENT_CREDITS`, `NONCE_MISMATCH`, `UNKNOWN_ERROR`.
+   * Machine-readable error code, the same name on iOS and Android (see
+   * `UseSenseErrorCode` and the README's error code table). The bridge maps
+   * Android's numeric codes to these names; codes outside the list pass
+   * through unchanged.
    */
-  code: string;
+  code: UseSenseErrorCode | string;
   /** Human-readable error message. */
   message: string;
   /** Whether the operation can be retried. */
   isRetryable?: boolean;
-  /** Server-specific error code, if any. */
+  /** The server's own error code (e.g. `token_not_found`), when it sent one. */
   serverCode?: string;
+  /**
+   * The platform's raw code before normalisation: Android's number (an HTTP
+   * status or a client code such as `1002`), or the iOS name. Absent for
+   * errors raised in JS before the bridge (`INVALID_CONFIG`).
+   */
+  nativeCode?: string;
 }
 
 /**
@@ -221,6 +262,17 @@ export interface UseSenseSubscription {
 const eventEmitter = new NativeEventEmitter(UseSenseModule);
 
 /**
+ * The API base both native SDKs accept: no trailing slash, ending in `/v1`.
+ * iOS joins paths onto it (`/sessions/...`); Android drops the `/v1` itself.
+ * So `https://staging.api.usesense.ai` and `.../v1/` mean the same on both.
+ */
+export function normaliseApiEndpoint(endpoint: string | undefined): string | undefined {
+  const trimmed = endpoint?.trim().replace(/\/+$/, '');
+  if (!trimmed) return undefined;
+  return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
+}
+
+/**
  * UseSense React Native plugin.
  *
  * Human presence verification wrapping the native iOS and Android
@@ -258,22 +310,16 @@ export class UseSense {
    * method. Calling again with a different API key or environment
    * replaces the previous configuration.
    *
-   * @throws {UseSenseError} If the API key is empty or initialization
-   * fails on the native side.
+   * The API key may be left out when the app only uses client tokens; a
+   * later `startVerification` then rejects with `INVALID_CONFIG`.
+   *
+   * @throws {UseSenseError} If initialization fails on the native side.
    */
   static async initialize(config: UseSenseConfig): Promise<void> {
-    if (!config.apiKey) {
-      const err: UseSenseError = {
-        code: 'invalid_config',
-        message: 'apiKey is required',
-        isRetryable: false,
-      };
-      throw err;
-    }
     return UseSenseModule.initialize({
-      apiKey: config.apiKey,
+      apiKey: config.apiKey?.trim() ?? '',
       environment: config.environment ?? 'auto',
-      apiEndpoint: config.apiEndpoint,
+      apiEndpoint: normaliseApiEndpoint(config.apiEndpoint),
       branding: config.branding,
       antispoofOnDeviceEnabled: config.antispoofOnDeviceEnabled ?? false,
       liveSenseV4Enabled: config.liveSenseV4Enabled ?? false,
@@ -290,12 +336,76 @@ export class UseSense {
   static async startVerification(
     request: VerificationRequest,
   ): Promise<UseSenseResult> {
-    return UseSenseModule.startVerification({
+    const invalid = validateRequest(request);
+    if (invalid) throw invalid;
+    return bridged(() => UseSenseModule.startVerification({
       sessionType: request.sessionType,
       externalUserId: request.externalUserId,
       identityId: request.identityId,
       metadata: request.metadata,
-    });
+    }));
+  }
+
+  /**
+   * Start a verification from a single-use client token, so no API key
+   * is on the device (server-side init). Same full-screen capture,
+   * branding, result and errors as `startVerification`.
+   *
+   * 1. Your server calls `POST /v1/sessions/create-token` with its secret
+   *    key, the session type and anything else the session needs
+   *    (identity_id, reference image, metadata).
+   * 2. It hands the returned `client_token` to the app.
+   * 3. The app calls this; the native SDK exchanges the token
+   *    (`POST /v1/sessions/exchange-token`) and runs the capture.
+   *
+   * `initialize` is optional here (without it the SDK defaults apply);
+   * when it was called, its environment, endpoint, branding and capture
+   * options are used and its API key is not. The token is single-use, so
+   * after a rejection start again with a new token. Exchange failures
+   * reject with `serverCode` `token_not_found`, `token_expired` or
+   * `token_already_used`.
+   */
+  static async startVerificationWithToken(
+    request: TokenVerificationRequest,
+  ): Promise<UseSenseResult> {
+    const invalid = validateClientToken(request.clientToken);
+    if (invalid) throw invalid;
+    return bridged(() => UseSenseModule.startVerificationWithToken({
+      clientToken: request.clientToken.trim(),
+      sessionType: request.sessionType,
+    }));
+  }
+
+  /**
+   * Run a hosted remote enrollment from its ID (the `enr_...` in a
+   * remote enrollment link created on your server or in the dashboard).
+   * The native SDK loads the enrollment, shows its introduction, runs the
+   * capture and its result screen. Resolves with the decision when the
+   * person leaves the result screen. Needs `initialize`.
+   */
+  static async startRemoteEnrollment(
+    remoteEnrollmentId: string,
+  ): Promise<RemoteFlowResult> {
+    if (!remoteEnrollmentId?.trim()) {
+      throw invalidConfig('remoteEnrollmentId must not be blank');
+    }
+    return bridged(() => UseSenseModule.startRemoteEnrollment(remoteEnrollmentId.trim()));
+  }
+
+  /**
+   * Run a hosted remote verification from its ID (a remote session link
+   * created on your server). The native SDK shows the action to approve,
+   * runs the capture and its result screen. Resolves with the decision,
+   * or `DISPUTED` when the person disputes the action instead of
+   * verifying it. Needs `initialize`.
+   */
+  static async startRemoteVerification(
+    remoteSessionId: string,
+  ): Promise<RemoteFlowResult> {
+    if (!remoteSessionId?.trim()) {
+      throw invalidConfig('remoteSessionId must not be blank');
+    }
+    return bridged(() => UseSenseModule.startRemoteVerification(remoteSessionId.trim()));
   }
 
   /**
@@ -404,6 +514,16 @@ export interface V4Verdict {
 }
 
 export default UseSense;
+
+// One error code set on both platforms.
+export { normaliseError, type UseSenseErrorCode } from './errors';
+
+// Embedded capture: the same session, drawn inside your own screen.
+export {
+  UseSenseView,
+  type UseSenseViewProps,
+  type UseSenseViewErrorEvent,
+} from './UseSenseView';
 
 // Headless silent device check for Your KYC: runs next to your own KYC
 // provider's SDK with no UI, no camera and no permission prompt.

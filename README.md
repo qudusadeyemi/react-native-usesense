@@ -49,7 +49,7 @@ cd ios && pod install
 
 The native Sense iOS SDK is installed automatically as a CocoaPod
 dependency from the public CocoaPods trunk (`UseSenseSDK`, pinned to
-`~> 4.13.1`). Add required permissions to your `Info.plist`:
+`~> 4.14.0`). Add required permissions to your `Info.plist`:
 
 ```xml
 <key>NSCameraUsageDescription</key>
@@ -233,13 +233,13 @@ check; a token lasts 15 minutes), `nonce_mismatch`, `invalid_input`, `out_of_ord
 once, then finish once), `not_found`, `unavailable`, `network_error`, `timeout` (retried
 once by the SDK already), `invalid_config`, `cancelled`. The app is never told the score;
 read it on your server with `GET /v1/device-checks/:id`. Needs native SDKs iOS 4.13.1 and
-Android 4.15.0 (pinned by this package).
+Android 4.15.0 or later (this package pins newer ones).
 
 ## Configuration
 
 ```typescript
 interface UseSenseConfig {
-  apiKey: string;
+  apiKey?: string;            // leave out when you only use client tokens
   environment?: 'sandbox' | 'production' | 'auto'; // default: 'auto'
   apiEndpoint?: string;       // default: https://api.usesense.ai/v1
   branding?: BrandingConfig;  // optional UI customization
@@ -300,6 +300,128 @@ const result = await UseSense.startVerification({
 if (result.isApproved) {
   // Identity verified. Proceed with login / transaction / action.
 }
+```
+
+### Liveness only
+
+Checks that a real person is in front of the camera, and nothing
+else. No identity is created, no face is enrolled and no 1:N
+duplicate search runs. A liveness session costs 1 credit. Do not
+pass an `identityId`: `startVerification` rejects with
+`INVALID_CONFIG` (the server rejects it with a 400).
+
+```typescript
+const result = await UseSense.startVerification({
+  sessionType: 'liveness',
+  externalUserId: 'user_12345', // optional, for your own records
+});
+
+if (result.isApproved) {
+  // A live person completed the check.
+}
+```
+
+## Keep the API key off the device (client token)
+
+Ship no API key in the app. Your server creates the session and hands
+the app a single-use client token; the SDK exchanges it and runs the
+same capture, screens, branding and result as `startVerification`.
+
+1. Your server calls `POST /v1/sessions/create-token` with its secret
+   key, the `session_type` and anything else the session needs
+   (`identity_id`, a reference image, metadata). It gets back a
+   `client_token` (single-use, short-lived).
+2. It sends the `client_token` to the app.
+3. The app starts the capture from it:
+
+```typescript
+// Optional: environment, endpoint, branding and capture options. No key.
+await UseSense.initialize({ environment: 'sandbox' });
+
+const result = await UseSense.startVerificationWithToken({
+  clientToken, // from your server
+  sessionType: 'enrollment', // the type your server passed to create-token
+});
+```
+
+- `initialize` is optional for token starts. When you call it, pass the
+  `environment` the token was created in (the token is looked up in
+  that environment; with no key there is no key prefix to detect it
+  from, so it defaults to production).
+- The token is single-use. After a rejection or an error, get a new
+  token from your server; the result screen offers no "Try again".
+- Exchange failures reject like any session error; Android also sets
+  `serverCode` to `token_not_found`, `token_expired` or
+  `token_already_used`.
+- With no API key, `startVerification` and `<UseSenseView request />`
+  reject with `INVALID_CONFIG`.
+
+## Embed the capture in your own screen
+
+`<UseSenseView />` draws the capture inside your layout instead of a
+full-screen native screen: the same session, screens, branding (your
+code wins over the dashboard), copy and result. It hosts the native
+Android `UseSenseFragment` and the iOS `UseSenseViewController`.
+
+```tsx
+import { UseSenseView } from 'react-native-usesense';
+
+function VerifyScreen({ navigation, clientToken }) {
+  return (
+    <UseSenseView
+      style={{ flex: 1 }}
+      clientToken={clientToken}      // or: request={{ sessionType: 'enrollment' }}
+      sessionType="enrollment"
+      onComplete={(result) => navigation.replace('Done', { result })}
+      onError={(error) => navigation.replace('Failed', { error })}
+      onCancel={() => navigation.goBack()}
+    />
+  );
+}
+```
+
+- Pass **either** `request` (a session on the API key from `initialize`,
+  same fields as `startVerification`) **or** `clientToken` +
+  `sessionType`. Invalid props (both, neither, a blank token, liveness
+  with an `identityId`) call `onError` with `INVALID_CONFIG` and render
+  nothing.
+- The session starts when the view mounts and runs once. Later prop
+  changes are ignored; remount (for example with a new `key`) to start
+  another.
+- Exactly one of `onComplete`, `onError`, `onCancel` fires; leave the
+  screen or unmount the view in it. `onComplete` fires when the person
+  leaves the result screen. `onError` gets the same `{ code, message,
+  isRetryable }` the promise methods reject with.
+- Unmounting mid-capture (leaving the screen) ends the capture with no
+  callback.
+- A client token is single-use. When the session ends, move on with
+  `replace` (or reset the stack) rather than pushing the next screen over
+  the capture, so Back cannot return to it. A view mounted again with a
+  token whose session already ended reports `onError` with
+  `TOKEN_ALREADY_USED` at once and starts nothing.
+- The SDK asks for camera and microphone permission itself.
+- Give the view the space the camera should fill; full screen works
+  best. Lifecycle events still arrive through `UseSense.addListener`.
+- Android: render it in the Activity's own window. Inside a React
+  Native `<Modal>` (a separate dialog window) it reports `onError` with
+  `unsupported_container`. Keep the React Native template's
+  `android:configChanges` on `MainActivity`, so a rotation or theme
+  change does not recreate the Activity under the capture.
+- Works on the Old and the New Architecture (a legacy view manager,
+  run by React Native's interop layer).
+
+## Remote enrollment and verification
+
+Run a hosted remote enrollment or remote verification by its ID (from a
+link your server or the dashboard created). The native SDK loads it,
+runs the capture and its result screen, full screen. Needs `initialize`.
+
+```typescript
+const { decision } = await UseSense.startRemoteEnrollment('enr_abc123');
+// 'APPROVE' | 'REJECT' | 'MANUAL_REVIEW'
+
+const { decision: outcome } = await UseSense.startRemoteVerification('rsess_abc123');
+// also 'DISPUTED' when the person disputes the action instead of verifying it
 ```
 
 ## Handling results
@@ -414,11 +536,23 @@ Full event list: `SESSION_CREATED`, `PERMISSIONS_REQUESTED`,
 
 ## Error handling
 
-`UseSense.startVerification` rejects with a `UseSenseError` on
-failure. Codes are uppercase strings matching the native SDK's
-canonical codes, plus a small set of bridge-specific codes
-(`session_cancelled`, `sdk_not_initialized`, `no_view_controller`,
-`invalid_config`).
+`startVerification`, `startVerificationWithToken`, the remote flows and
+`<UseSenseView onError>` all report a `UseSenseError`:
+
+```typescript
+interface UseSenseError {
+  code: string;         // a named code from the table below, the same on iOS and Android
+  message: string;      // human-readable
+  isRetryable?: boolean;
+  serverCode?: string;  // the server's own code when it sent one, e.g. 'token_expired'
+  nativeCode?: string;  // the platform's raw code, e.g. '410' on Android, 'TOKEN_EXPIRED' on iOS
+}
+```
+
+The iOS SDK reports named codes; the Android SDK reports numbers (an HTTP
+status, or a client code such as `1002`). The plugin maps Android's
+numbers to the iOS names, so you switch on one set of codes. The raw
+value stays in `nativeCode` for logs and support.
 
 ```typescript
 import { UseSense, UseSenseError } from 'react-native-usesense';
@@ -428,7 +562,6 @@ try {
 } catch (err) {
   const error = err as UseSenseError;
   switch (error.code) {
-    case 'session_cancelled':
     case 'USER_CANCELLED':
       // User tapped cancel / backed out. Silent.
       break;
@@ -439,27 +572,62 @@ try {
     case 'NETWORK_TIMEOUT':
       // Retry with exponential backoff.
       break;
-    case 'SESSION_EXPIRED':
-      // Start a fresh session.
+    case 'TOKEN_EXPIRED':
+    case 'TOKEN_ALREADY_USED':
+      // Client token: ask your server for a new one.
       break;
     case 'QUOTA_EXCEEDED':
     case 'INSUFFICIENT_CREDITS':
       // Rate-limited or out of credits. Surface to the user.
       break;
     case 'INVALID_CONFIG':
-    case 'sdk_not_initialized':
-      // Check your API key and that initialize() ran successfully.
+    case 'SDK_NOT_INITIALIZED':
+      // Check your API key / client token and that initialize() ran.
       break;
     default:
-      // UNKNOWN_ERROR, SERVER_ERROR, SERVICE_UNAVAILABLE, etc.
+      // SERVER_ERROR, SERVICE_UNAVAILABLE, UNKNOWN_ERROR, etc.
   }
 }
 ```
 
-Full error code reference: see the [native iOS SDK's
-`UseSenseErrorCode`](https://github.com/qudusadeyemi/usesense-ios-sdk/blob/main/Sources/UseSense/UseSenseError.swift)
-and the [native Android SDK's
-`UseSenseError`](https://github.com/qudusadeyemi/usesense-android-sdk/blob/main/sdk/src/main/java/com/usesense/sdk/UseSenseError.kt).
+| `code` | Meaning | Android `nativeCode` |
+|---|---|---|
+| `USER_CANCELLED` | The person backed out | `CANCELLED` (iOS: `session_cancelled`) |
+| `CAMERA_UNAVAILABLE` | No usable front camera | `1001` |
+| `CAMERA_PERMISSION_DENIED` | Camera permission refused | `1002` |
+| `MIC_PERMISSION_DENIED` | Microphone permission refused | `1003` |
+| `NETWORK_ERROR` | No connection or the request failed | `2001` |
+| `NETWORK_TIMEOUT` | A request timed out | `2002` |
+| `SESSION_EXPIRED` | The session expired | `3001`, `401` + `session_expired`, `410` |
+| `UPLOAD_FAILED` | The capture upload failed after retries | `3002` |
+| `CAPTURE_FAILED` | Frame capture failed | `4001` |
+| `NO_FRAMES_CAPTURED` | The camera returned no images | `4001` + `NO_FRAMES_CAPTURED` |
+| `ENCODING_FAILED` | Frame encoding failed | `4002` |
+| `INVALID_CONFIG` | Bad configuration or arguments (also raised in JS before the bridge) | `5001` |
+| `QUOTA_EXCEEDED` | Rate limited | `6001`, `429` |
+| `TIMEOUT` | Finishing the verification took too long | `7001` |
+| `CAPTURE_TIMEOUT` | The camera stopped responding | `7002` |
+| `UPLOAD_TIMEOUT` | Sending the capture took too long | `7003` |
+| `INVALID_REQUEST` | The server rejected the request | `400` |
+| `UNAUTHORIZED` | Bad or missing API key | `401`, `403` |
+| `INVALID_TOKEN` | Session token invalid | `401` + `invalid_token` |
+| `NONCE_MISMATCH` | Session check failed | `401` + `nonce_mismatch` |
+| `INSUFFICIENT_CREDITS` | Out of credits | `402` |
+| `SESSION_NOT_FOUND` | Session, or client token, not found | `404` (`serverCode` `token_not_found` for a token) |
+| `IDENTITY_NOT_FOUND` | The `identityId` does not exist | `404` + `identity_not_found` |
+| `TOKEN_ALREADY_USED` | The client token was already exchanged | `409` |
+| `TOKEN_EXPIRED` | The client token expired | `410` + `token_expired` |
+| `SERVER_ERROR` | Server error | `500`, other `5xx` |
+| `SERVICE_UNAVAILABLE` | Service unavailable | `503` |
+| `SDK_NOT_INITIALIZED` | `initialize()` was not called | `sdk_not_initialized` |
+| `NO_HOST_SCREEN` | No Activity / view controller to show the capture | `NO_ACTIVITY`, `no_activity` (iOS: `no_view_controller`) |
+| `UNSUPPORTED_CONTAINER` | `<UseSenseView>` inside a React Native `<Modal>` (Android) | `unsupported_container` |
+| `UNKNOWN_ERROR` | Anything else | other numbers |
+
+iOS can also report `FACE_NOT_DETECTED`, `LOW_LIGHT` and `RESPONSE_INVALID`
+(the result could not be read). The type `UseSenseErrorCode` lists every
+code, and `normaliseError(raw)` is exported if you call the native module
+yourself.
 
 ## Security model: always verify the webhook
 
@@ -486,9 +654,10 @@ Node.js, Python, and Go.
 
 ### `UseSense.initialize(config: UseSenseConfig): Promise<void>`
 
-Initializes the plugin. Must be called once before any other method.
-Calling again with a different key or environment replaces the
-previous configuration. Throws if `apiKey` is empty or the native
+Initializes the plugin. Must be called once before any other method
+(client-token starts excepted). Calling again with a different key or
+environment replaces the previous configuration. `apiKey` may be left
+out when the app only starts from client tokens. Throws if the native
 side fails to initialize.
 
 ### `UseSense.startVerification(request: VerificationRequest): Promise<UseSenseResult>`
@@ -497,6 +666,28 @@ Runs a verification session. Presents a full-screen native camera
 activity. Resolves when the session completes or rejects on failure
 (including user cancellation). The returned `UseSenseResult` is
 always the redacted five-field shape.
+
+### `UseSense.startVerificationWithToken(request: TokenVerificationRequest): Promise<UseSenseResult>`
+
+Runs a verification from a single-use `clientToken` (with its
+`sessionType`), so no API key is on the device. Same capture, result
+and errors as `startVerification`. See
+[Keep the API key off the device](#keep-the-api-key-off-the-device-client-token).
+
+### `UseSense.startRemoteEnrollment(remoteEnrollmentId: string): Promise<RemoteFlowResult>`
+
+### `UseSense.startRemoteVerification(remoteSessionId: string): Promise<RemoteFlowResult>`
+
+Run a hosted remote enrollment or verification by ID and resolve with
+`{ decision }` (`DISPUTED` possible for verification). Reject on
+failure or cancellation.
+
+### `<UseSenseView />`
+
+The embedded capture. Props: `request` **or** `clientToken` +
+`sessionType`; `onComplete(result)`, `onError(error)`, `onCancel()`;
+any `View` props (`style`, `testID`). See
+[Embed the capture in your own screen](#embed-the-capture-in-your-own-screen).
 
 ### `UseSense.addListener(callback: (event) => void): UseSenseSubscription`
 
@@ -522,7 +713,10 @@ sandbox or production API key into the UI at runtime (persisted
 across launches via AsyncStorage) and run on a physical device. The
 example shows the canonical integration pattern for `initialize`,
 `startVerification`, event subscription, result display, and error
-handling.
+handling, plus a client-token start (paste a token from your server,
+or mint a demo one with the key), the embedded `<UseSenseView />`
+(full screen or embedded, API key or token) and remote enrollment /
+verification by ID.
 
 ## Changelog
 

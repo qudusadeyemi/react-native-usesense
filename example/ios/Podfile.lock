@@ -1242,7 +1242,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-usesense (2.9.0):
+  - react-native-usesense (2.10.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1262,7 +1262,7 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - UseSenseSDK (~> 4.13.0)
+    - UseSenseSDK (~> 4.14.0)
     - Yoga
   - React-nativeconfig (0.76.5)
   - React-NativeModulesApple (0.76.5):
@@ -1553,9 +1553,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - Yoga
   - SocketRocket (0.7.1)
-  - UseSenseMediaPipe (4.13.0)
-  - UseSenseSDK (4.13.0):
-    - UseSenseMediaPipe (= 4.13.0)
+  - UseSenseMediaPipe (4.14.0)
+  - UseSenseSDK (4.14.0):
+    - UseSenseMediaPipe (= 4.14.0)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -1802,7 +1802,7 @@ SPEC CHECKSUMS:
   React-logger: ae95f0effa7e1791bd6f7283caddca323d4fbc1e
   React-Mapbuffer: 7eb5d69e1154e7743487ef0c8d7261e5b59afb32
   React-microtasksnativemodule: 01dd998649ff5f8814846b7eee84c4d57f5d3671
-  react-native-usesense: 4d34f96cffac2f4ce0e9cfaf15626cb7e79bbf38
+  react-native-usesense: af7946e51b9f2f5e5e432c585af4d5617203a087
   React-nativeconfig: f7ab6c152e780b99a8c17448f2d99cf5f69a2311
   React-NativeModulesApple: 9aeb901b9bfcc9235e912445fb3cf4780a99baf4
   React-perflogger: 16e049953d21b37e9871ddf0b02f414e12ff14ba
@@ -1832,8 +1832,8 @@ SPEC CHECKSUMS:
   ReactCommon: 5809a8ee421b7219221a475b78180f8f34b5c5ec
   RNCAsyncStorage: f27db574d8d0d56438ec4e9ba345872f2d0f29f4
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
-  UseSenseMediaPipe: 5ca766561f46d091e8f58f641acc895b3b911eac
-  UseSenseSDK: 2e238b157f72f160f6f7ffe98a7b797ec98b9253
+  UseSenseMediaPipe: 01f4c68cfaf58dedc8d5c51308e74972d1f3a87f
+  UseSenseSDK: 66f72c4b33ba26866b053db5ad43c24cbe400c2a
   Yoga: fcc198acd4a55599b3468cfb6ebc526baff5f06e
 
 PODFILE CHECKSUM: e81993c1cbec759fef126269f0ff8615e23177cc

@@ -17,6 +17,7 @@ import {
   UseSenseEnvironment,
   UseSenseFlows,
   FlowError,
+  type SessionType,
 } from 'react-native-usesense';
 import type { Navigation } from '../navigation';
 
@@ -39,6 +40,9 @@ export default function HomeScreen({ navigation }: Props) {
   const [useProduction, setUseProduction] = useState(false);
   const [identityId, setIdentityId] = useState('');
   const [flowId, setFlowId] = useState('');
+  const [clientToken, setClientToken] = useState('');
+  const [tokenSessionType, setTokenSessionType] = useState<SessionType>('enrollment');
+  const [remoteId, setRemoteId] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Tracks the key the SDK is currently initialized for. If the user
@@ -102,6 +106,138 @@ export default function HomeScreen({ navigation }: Props) {
     }
   };
 
+  // Client-token sessions keep the API key off the device: initialize with
+  // the environment only (no key). The token must match that environment.
+  const ensureInitializedForToken = async (): Promise<boolean> => {
+    const stateKey = `token|${useProduction ? 'prod' : 'sandbox'}`;
+    if (initializedForRef.current === stateKey) return true;
+    try {
+      await UseSense.initialize({ environment: useProduction ? 'production' : 'sandbox' });
+      initializedForRef.current = stateKey;
+      return true;
+    } catch (err) {
+      const e = err as UseSenseError;
+      Alert.alert('Initialization Failed', `${e.code ?? 'unknown'}: ${e.message ?? ''}`);
+      return false;
+    }
+  };
+
+  const showSessionError = (error: unknown) => {
+    const err = error as UseSenseError;
+    switch (err.code) {
+      case 'session_cancelled':
+      case 'USER_CANCELLED':
+      case 'CANCELLED':
+        // User cancelled — silent.
+        break;
+      case 'CAMERA_PERMISSION_DENIED':
+        Alert.alert('Camera Required', 'Camera access is required for identity verification.');
+        break;
+      case 'NETWORK_ERROR':
+      case 'NETWORK_TIMEOUT':
+        Alert.alert('Network Error', 'Check your internet connection and try again.');
+        break;
+      default:
+        Alert.alert(
+          'Verification Failed',
+          `${err.code ?? 'unknown'}: ${err.message ?? 'Session could not be completed.'}`,
+        );
+    }
+  };
+
+  // Stands in for YOUR server: in production your backend calls
+  // POST /v1/sessions/create-token with its secret key and hands the app only
+  // the single-use client_token. The example does it inline so the flow can be
+  // tried end to end.
+  const mintClientToken = async () => {
+    const key = apiKey.trim();
+    if (!key) {
+      Alert.alert('API Key Required', 'Enter an API key to mint a demo client token, or paste a token.');
+      return;
+    }
+    if (tokenSessionType === 'authentication' && !identityId.trim()) {
+      Alert.alert('Identity ID Required', 'Enter an identity ID (Authentication card) for authentication tokens.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/v1/sessions/create-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': key,
+          'x-environment': useProduction ? 'production' : 'sandbox',
+        },
+        body: JSON.stringify({
+          session_type: tokenSessionType,
+          platform: 'react-native',
+          ...(tokenSessionType === 'authentication' ? { identity_id: identityId.trim() } : {}),
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(`Could not create a client token (HTTP ${res.status}): ${await res.text()}`);
+      }
+      const data = (await res.json()) as { client_token?: string };
+      if (!data.client_token) throw new Error('No client_token in the response.');
+      setClientToken(data.client_token);
+    } catch (error) {
+      Alert.alert('Token Failed', error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTokenSession = async (embedded: boolean) => {
+    const token = clientToken.trim();
+    if (!token) return;
+    if (!(await ensureInitializedForToken())) return;
+    // Single-use: clear it so the next run takes a fresh token.
+    setClientToken('');
+    if (embedded) {
+      navigation.navigate('EmbeddedCapture', {
+        launch: { kind: 'token', clientToken: token, sessionType: tokenSessionType },
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      const result = await UseSense.startVerificationWithToken({
+        clientToken: token,
+        sessionType: tokenSessionType,
+      });
+      navigation.navigate('Result', { result });
+    } catch (error) {
+      showSessionError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmbeddedEnrollment = async () => {
+    if (!(await ensureInitialized())) return;
+    navigation.navigate('EmbeddedCapture', {
+      launch: { kind: 'request', request: { sessionType: 'enrollment' } },
+    });
+  };
+
+  const handleRemote = async (kind: 'enrollment' | 'verification') => {
+    const id = remoteId.trim();
+    if (!id) return;
+    if (!(await ensureInitialized())) return;
+    setLoading(true);
+    try {
+      const { decision } =
+        kind === 'enrollment'
+          ? await UseSense.startRemoteEnrollment(id)
+          : await UseSense.startRemoteVerification(id);
+      Alert.alert(kind === 'enrollment' ? 'Remote Enrollment' : 'Remote Verification', `Decision: ${decision}`);
+    } catch (error) {
+      showSessionError(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSession = async (
     sessionType: 'enrollment' | 'authentication',
   ) => {
@@ -124,31 +260,7 @@ export default function HomeScreen({ navigation }: Props) {
       });
       navigation.navigate('Result', { result });
     } catch (error) {
-      const err = error as UseSenseError;
-      switch (err.code) {
-        case 'session_cancelled':
-        case 'USER_CANCELLED':
-          // User cancelled — silent.
-          break;
-        case 'CAMERA_PERMISSION_DENIED':
-          Alert.alert(
-            'Camera Required',
-            'Camera access is required for identity verification.',
-          );
-          break;
-        case 'NETWORK_ERROR':
-        case 'NETWORK_TIMEOUT':
-          Alert.alert(
-            'Network Error',
-            'Check your internet connection and try again.',
-          );
-          break;
-        default:
-          Alert.alert(
-            'Verification Failed',
-            `${err.code ?? 'unknown'}: ${err.message ?? 'Session could not be completed.'}`,
-          );
-      }
+      showSessionError(error);
     } finally {
       setLoading(false);
     }
@@ -224,6 +336,8 @@ export default function HomeScreen({ navigation }: Props) {
   };
 
   const hasKey = apiKey.trim().length > 0;
+  const hasToken = clientToken.trim().length > 0;
+  const hasRemoteId = remoteId.trim().length > 0;
 
   return (
     <ScrollView
@@ -308,6 +422,70 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.buttonText}>Enroll</Text>
           )}
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.button,
+            styles.secondaryButton,
+            (!hasKey || loading) && styles.buttonDisabled,
+          ]}
+          onPress={handleEmbeddedEnrollment}
+          disabled={!hasKey || loading}
+        >
+          <Text style={styles.buttonText}>Enroll in this screen (embedded)</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Keep the API key off the device</Text>
+        <Text style={styles.cardDescription}>
+          Your server calls POST /v1/sessions/create-token and hands the app a
+          single-use client token; the app never holds a key. Paste a token from
+          your server, or mint a demo one with the API key above (standing in for
+          your server).
+        </Text>
+        <View style={styles.segmentRow}>
+          {(['enrollment', 'authentication', 'liveness'] as const).map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[styles.segment, tokenSessionType === type && styles.segmentActive]}
+              onPress={() => setTokenSessionType(type)}
+            >
+              <Text style={styles.segmentText}>{type}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <TextInput
+          style={styles.input}
+          placeholder="Client token (cli_tok_...)"
+          placeholderTextColor="#6B7280"
+          value={clientToken}
+          onChangeText={setClientToken}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <TouchableOpacity
+          style={[styles.button, styles.secondaryButton, (!hasKey || loading) && styles.buttonDisabled]}
+          onPress={mintClientToken}
+          disabled={!hasKey || loading}
+        >
+          <Text style={styles.buttonText}>Mint a demo token with my API key</Text>
+        </TouchableOpacity>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.button, styles.rowButton, styles.tokenButton, (!hasToken || loading) && styles.buttonDisabled]}
+            onPress={() => handleTokenSession(false)}
+            disabled={!hasToken || loading}
+          >
+            <Text style={styles.buttonText}>Full screen</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.rowButton, styles.tokenButton, (!hasToken || loading) && styles.buttonDisabled]}
+            onPress={() => handleTokenSession(true)}
+            disabled={!hasToken || loading}
+          >
+            <Text style={styles.buttonText}>Embedded</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -340,6 +518,39 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.buttonText}>Authenticate</Text>
           )}
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Remote enrollment / verification</Text>
+        <Text style={styles.cardDescription}>
+          Run a hosted remote enrollment (enr_...) or remote verification by its
+          ID, from a link your server or the dashboard created.
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Remote enrollment or session ID"
+          placeholderTextColor="#6B7280"
+          value={remoteId}
+          onChangeText={setRemoteId}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.button, styles.rowButton, styles.remoteButton, (!hasKey || !hasRemoteId || loading) && styles.buttonDisabled]}
+            onPress={() => handleRemote('enrollment')}
+            disabled={!hasKey || !hasRemoteId || loading}
+          >
+            <Text style={styles.buttonText}>Enrollment</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.rowButton, styles.remoteButton, (!hasKey || !hasRemoteId || loading) && styles.buttonDisabled]}
+            onPress={() => handleRemote('verification')}
+            disabled={!hasKey || !hasRemoteId || loading}
+          >
+            <Text style={styles.buttonText}>Verification</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -459,6 +670,22 @@ const styles = StyleSheet.create({
   enrollButton: { backgroundColor: '#4F7CFF' },
   authButton: { backgroundColor: '#00D4AA' },
   flowButton: { backgroundColor: '#A855F7' },
+  tokenButton: { backgroundColor: '#F97316' },
+  remoteButton: { backgroundColor: '#0EA5E9' },
+  secondaryButton: { backgroundColor: '#2D2D44', marginTop: 8, marginBottom: 8 },
+  buttonRow: { flexDirection: 'row', gap: 8 },
+  rowButton: { flex: 1 },
+  segmentRow: { flexDirection: 'row', gap: 6, marginBottom: 12 },
+  segment: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2D2D44',
+    alignItems: 'center',
+  },
+  segmentActive: { backgroundColor: '#2D2D44', borderColor: '#F97316' },
+  segmentText: { color: '#FFFFFF', fontSize: 12 },
   buttonDisabled: { opacity: 0.4 },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   eventLogLink: { alignItems: 'center', paddingVertical: 12 },

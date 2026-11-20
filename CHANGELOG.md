@@ -14,11 +14,29 @@ This project adheres to [Semantic Versioning](https://semver.org/).
   other than `"authentication"` became enrollment). `startVerification`
   rejects with `INVALID_CONFIG` when an `identityId` is passed with
   `liveness`, as the native SDKs and the server (400) do.
+- **Keep the API key off the device**: `UseSense.startVerificationWithToken({
+  clientToken, sessionType })` starts a verification from the single-use
+  `client_token` your server gets from `POST /v1/sessions/create-token`; the
+  native SDK exchanges it (`POST /v1/sessions/exchange-token`). Same capture,
+  result and error mapping as `startVerification`. `initialize` is optional
+  for it, and `UseSenseConfig.apiKey` is now optional (token-only apps ship no
+  key; `startVerification` then rejects with `INVALID_CONFIG`).
+- **Embedded capture**: `<UseSenseView />` draws the capture inside your own
+  screen (Android `UseSenseFragment`, iOS `UseSenseViewController` as a child
+  view controller), from a `request` or a `clientToken`, with the same
+  branding (code wins), copy and result, reported through `onComplete`,
+  `onError` and `onCancel`. Old and New Architecture (interop).
+- **Remote enrollment and verification by ID**:
+  `UseSense.startRemoteEnrollment(id)` and `startRemoteVerification(id)`
+  resolve with `{ decision }` (`DISPUTED` when the person disputes a remote
+  verification).
 
 ### Changed
 - Native SDKs: iOS `UseSenseSDK` `~> 4.13.1` → **`~> 4.14.0`** (>= 4.14.0,
   < 4.15.0), Android `ai.usesense:sdk` 4.15.0 → **4.16.0** (the first versions
-  with liveness).
+  with liveness, and on Android with the client-token start, a working
+  `UseSenseFragment` and remote-flow callbacks).
+- `UseSense.initialize` no longer throws when `apiKey` is missing.
 
 ## [2.9.1] - 2026-11-18
 

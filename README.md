@@ -239,7 +239,7 @@ Android 4.15.0 or later (this package pins newer ones).
 
 ```typescript
 interface UseSenseConfig {
-  apiKey: string;
+  apiKey?: string;            // leave out when you only use client tokens
   environment?: 'sandbox' | 'production' | 'auto'; // default: 'auto'
   apiEndpoint?: string;       // default: https://api.usesense.ai/v1
   branding?: BrandingConfig;  // optional UI customization
@@ -319,6 +319,104 @@ const result = await UseSense.startVerification({
 if (result.isApproved) {
   // A live person completed the check.
 }
+```
+
+## Keep the API key off the device (client token)
+
+Ship no API key in the app. Your server creates the session and hands
+the app a single-use client token; the SDK exchanges it and runs the
+same capture, screens, branding and result as `startVerification`.
+
+1. Your server calls `POST /v1/sessions/create-token` with its secret
+   key, the `session_type` and anything else the session needs
+   (`identity_id`, a reference image, metadata). It gets back a
+   `client_token` (single-use, short-lived).
+2. It sends the `client_token` to the app.
+3. The app starts the capture from it:
+
+```typescript
+// Optional: environment, endpoint, branding and capture options. No key.
+await UseSense.initialize({ environment: 'sandbox' });
+
+const result = await UseSense.startVerificationWithToken({
+  clientToken, // from your server
+  sessionType: 'enrollment', // the type your server passed to create-token
+});
+```
+
+- `initialize` is optional for token starts. When you call it, pass the
+  `environment` the token was created in (the token is looked up in
+  that environment; with no key there is no key prefix to detect it
+  from, so it defaults to production).
+- The token is single-use. After a rejection or an error, get a new
+  token from your server; the result screen offers no "Try again".
+- Exchange failures reject like any session error; Android also sets
+  `serverCode` to `token_not_found`, `token_expired` or
+  `token_already_used`.
+- With no API key, `startVerification` and `<UseSenseView request />`
+  reject with `INVALID_CONFIG`.
+
+## Embed the capture in your own screen
+
+`<UseSenseView />` draws the capture inside your layout instead of a
+full-screen native screen: the same session, screens, branding (your
+code wins over the dashboard), copy and result. It hosts the native
+Android `UseSenseFragment` and the iOS `UseSenseViewController`.
+
+```tsx
+import { UseSenseView } from 'react-native-usesense';
+
+function VerifyScreen({ navigation, clientToken }) {
+  return (
+    <UseSenseView
+      style={{ flex: 1 }}
+      clientToken={clientToken}      // or: request={{ sessionType: 'enrollment' }}
+      sessionType="enrollment"
+      onComplete={(result) => navigation.replace('Done', { result })}
+      onError={(error) => navigation.replace('Failed', { error })}
+      onCancel={() => navigation.goBack()}
+    />
+  );
+}
+```
+
+- Pass **either** `request` (a session on the API key from `initialize`,
+  same fields as `startVerification`) **or** `clientToken` +
+  `sessionType`. Invalid props (both, neither, a blank token, liveness
+  with an `identityId`) call `onError` with `INVALID_CONFIG` and render
+  nothing.
+- The session starts when the view mounts and runs once. Later prop
+  changes are ignored; remount (for example with a new `key`) to start
+  another.
+- Exactly one of `onComplete`, `onError`, `onCancel` fires; leave the
+  screen or unmount the view in it. `onComplete` fires when the person
+  leaves the result screen. `onError` gets the same `{ code, message,
+  isRetryable }` the promise methods reject with.
+- Unmounting mid-capture (leaving the screen) ends the capture with no
+  callback.
+- The SDK asks for camera and microphone permission itself.
+- Give the view the space the camera should fill; full screen works
+  best. Lifecycle events still arrive through `UseSense.addListener`.
+- Android: render it in the Activity's own window. Inside a React
+  Native `<Modal>` (a separate dialog window) it reports `onError` with
+  `unsupported_container`. Keep the React Native template's
+  `android:configChanges` on `MainActivity`, so a rotation or theme
+  change does not recreate the Activity under the capture.
+- Works on the Old and the New Architecture (a legacy view manager,
+  run by React Native's interop layer).
+
+## Remote enrollment and verification
+
+Run a hosted remote enrollment or remote verification by its ID (from a
+link your server or the dashboard created). The native SDK loads it,
+runs the capture and its result screen, full screen. Needs `initialize`.
+
+```typescript
+const { decision } = await UseSense.startRemoteEnrollment('enr_abc123');
+// 'APPROVE' | 'REJECT' | 'MANUAL_REVIEW'
+
+const { decision: outcome } = await UseSense.startRemoteVerification('rsess_abc123');
+// also 'DISPUTED' when the person disputes the action instead of verifying it
 ```
 
 ## Handling results
@@ -505,9 +603,10 @@ Node.js, Python, and Go.
 
 ### `UseSense.initialize(config: UseSenseConfig): Promise<void>`
 
-Initializes the plugin. Must be called once before any other method.
-Calling again with a different key or environment replaces the
-previous configuration. Throws if `apiKey` is empty or the native
+Initializes the plugin. Must be called once before any other method
+(client-token starts excepted). Calling again with a different key or
+environment replaces the previous configuration. `apiKey` may be left
+out when the app only starts from client tokens. Throws if the native
 side fails to initialize.
 
 ### `UseSense.startVerification(request: VerificationRequest): Promise<UseSenseResult>`
@@ -516,6 +615,28 @@ Runs a verification session. Presents a full-screen native camera
 activity. Resolves when the session completes or rejects on failure
 (including user cancellation). The returned `UseSenseResult` is
 always the redacted five-field shape.
+
+### `UseSense.startVerificationWithToken(request: TokenVerificationRequest): Promise<UseSenseResult>`
+
+Runs a verification from a single-use `clientToken` (with its
+`sessionType`), so no API key is on the device. Same capture, result
+and errors as `startVerification`. See
+[Keep the API key off the device](#keep-the-api-key-off-the-device-client-token).
+
+### `UseSense.startRemoteEnrollment(remoteEnrollmentId: string): Promise<RemoteFlowResult>`
+
+### `UseSense.startRemoteVerification(remoteSessionId: string): Promise<RemoteFlowResult>`
+
+Run a hosted remote enrollment or verification by ID and resolve with
+`{ decision }` (`DISPUTED` possible for verification). Reject on
+failure or cancellation.
+
+### `<UseSenseView />`
+
+The embedded capture. Props: `request` **or** `clientToken` +
+`sessionType`; `onComplete(result)`, `onError(error)`, `onCancel()`;
+any `View` props (`style`, `testID`). See
+[Embed the capture in your own screen](#embed-the-capture-in-your-own-screen).
 
 ### `UseSense.addListener(callback: (event) => void): UseSenseSubscription`
 
@@ -541,7 +662,10 @@ sandbox or production API key into the UI at runtime (persisted
 across launches via AsyncStorage) and run on a physical device. The
 example shows the canonical integration pattern for `initialize`,
 `startVerification`, event subscription, result display, and error
-handling.
+handling, plus a client-token start (paste a token from your server,
+or mint a demo one with the key), the embedded `<UseSenseView />`
+(full screen or embedded, API key or token) and remote enrollment /
+verification by ID.
 
 ## Changelog
 

@@ -4,6 +4,7 @@ import { StackNavigator, type RootStackParamList } from './navigation';
 import HomeScreen from './screens/HomeScreen';
 import ResultScreen from './screens/ResultScreen';
 import EventLogScreen from './screens/EventLogScreen';
+import EmbeddedCaptureScreen from './screens/EmbeddedCaptureScreen';
 import DeviceCheckScreen, { launchCheck } from './screens/DeviceCheckScreen';
 
 export type { RootStackParamList };
@@ -29,6 +30,7 @@ export default function App() {
         Home: { component: HomeScreen, title: 'Sense Example' },
         Result: { component: ResultScreen, title: 'Verification Result' },
         EventLog: { component: EventLogScreen, title: 'Event Log' },
+        EmbeddedCapture: { component: EmbeddedCaptureScreen, title: 'Embedded capture' },
         DeviceCheck: { component: DeviceCheckScreen, title: 'Silent device check' },
       }}
     />

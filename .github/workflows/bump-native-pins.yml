@@ -1,0 +1,117 @@
+name: Bump native SDK pins
+
+# Every hour, checks Maven Central (ai.usesense:sdk) and CocoaPods (UseSenseSDK)
+# for a newer native release. Once it is installable, opens (or refreshes) one
+# `bot/native-pins` PR that moves every pin in this wrapper to it, then starts
+# CI on that branch. Uses only the per-run GITHUB_TOKEN: no stored secret. PRs
+# opened with GITHUB_TOKEN do not start pull_request workflows, so this run
+# starts them itself (workflow_dispatch is allowed with GITHUB_TOKEN); their
+# checks show on the PR. See RELEASING.md.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: bump-native-pins
+  cancel-in-progress: false
+
+jobs:
+  # Cheap hourly check on Linux; the macOS job runs only when there is work.
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.ready.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Is a newer native release out?
+        id: pins
+        run: |
+          python3 scripts/native_pins.py bump
+          if git diff --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+
+      # A release can be on trunk before the registries serve it. Try again next
+      # hour rather than open a PR whose CI cannot install it.
+      - name: Is it installable yet?
+        id: ready
+        run: |
+          # An open bot/native-pins branch that already pins the latest: nothing to do.
+          if git fetch -q origin bot/native-pins 2>/dev/null; then
+            git worktree add -q /tmp/bot FETCH_HEAD
+            if (cd /tmp/bot && python3 scripts/native_pins.py check >/dev/null); then
+              echo "bot/native-pins already pins the latest native SDKs."
+              echo "ready=false" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+          fi
+          if [ "${{ steps.pins.outputs.changed }}" = "true" ] && python3 scripts/native_pins.py wait --minutes 5; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  bump:
+    needs: detect
+    if: needs.detect.outputs.ready == 'true'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Move every pin to the latest native SDKs
+        run: python3 scripts/native_pins.py bump
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Regenerate the example Podfile.lock
+        run: |
+          npm ci
+          (cd example && npm ci)
+          cd example/ios
+          pod update UseSenseSDK UseSenseMediaPipe --repo-update
+
+      - name: Version and CHANGELOG
+        id: version
+        run: |
+          echo "version=$(python3 scripts/native_pins.py bump-patch | tail -1)" >> "$GITHUB_OUTPUT"
+          python3 scripts/native_pins.py changelog
+          python3 scripts/native_pins.py check
+
+      - name: Open or update the PR, then start CI on it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          latest="$(python3 scripts/native_pins.py latest | paste -sd' ' -)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C bot/native-pins
+          git add -A
+          git commit -q -m "chore: pin the latest native SDKs ($latest)" -m "Automated by .github/workflows/bump-native-pins.yml."
+          # Nothing new since the last hourly run: leave the open PR alone.
+          if git fetch -q origin bot/native-pins 2>/dev/null && git diff --quiet FETCH_HEAD HEAD; then
+            echo "bot/native-pins already has these pins."
+            exit 0
+          fi
+          git push -f origin bot/native-pins
+          title="chore: pin the latest native SDKs ($latest)"
+          body="Moves every native pin to the latest native SDKs ($latest) and sets this package to $VERSION.
+
+          Opened by bump-native-pins.yml once the release was installable. CI was started on this branch by the same run. Merge, then release this wrapper (RELEASING.md)."
+          if [ "$(gh pr view bot/native-pins --json state --jq .state 2>/dev/null)" = "OPEN" ]; then
+            gh pr edit bot/native-pins --title "$title" --body "$body"
+          else
+            gh pr create --base main --head bot/native-pins --title "$title" --body "$body"
+          fi
+          for wf in ci.yml native-pins.yml; do gh workflow run "$wf" --ref bot/native-pins; done

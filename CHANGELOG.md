@@ -4,6 +4,22 @@ All notable changes to react-native-usesense will be documented in this file.
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.10.1] - 2026-11-21
+
+### Fixed
+
+- **Android: face mesh, Play services and an AGP 9 launch crash under R8**,
+  through the native SDK 4.16.1. Release builds with
+  `enableProguardInReleaseBuilds = true` captured no face mesh and reported no
+  Play services (which could reject real people); with AGP 9 they crashed on
+  launch.
+- **Flows show one end screen** (native SDKs 4.16.1 / 4.14.1): no step result
+  ("We couldn't verify you") before the Flow's "Under review".
+
+### Changed
+
+- Native SDKs: Android `4.16.1`, iOS `~> 4.14.1`.
+
 ## [2.10.0] - 2026-11-20
 
 ### Added

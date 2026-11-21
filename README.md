@@ -3,8 +3,8 @@
 React Native plugin for human presence verification. Wraps the native
 Sense iOS and Android SDKs into a single cross-platform package.
 
-Sense verifies that a real human — not a bot, deepfake, or replay
-attack — is behind the camera during identity verification sessions.
+Sense verifies that a real human (not a bot, deepfake, or replay
+attack) is behind the camera during identity verification sessions.
 Three independent pillars run in parallel on every session:
 
 - **DeepSense** (Channel & Device Integrity): platform attestation,
@@ -17,7 +17,7 @@ Three independent pillars run in parallel on every session:
 
 A final `decision` (`APPROVE` / `REJECT` / `MANUAL_REVIEW`) is
 returned to the React Native side. **The SDK result is intentionally
-redacted — pillar scores, the session signature, and the full verdict
+redacted: pillar scores, the session signature, and the full verdict
 metadata are NOT exposed to the client.** Those fields are delivered
 to your backend via an HMAC-SHA256 signed webhook. Never trust the
 client-side decision for access-control decisions; it's for UI
@@ -49,7 +49,7 @@ cd ios && pod install
 
 The native Sense iOS SDK is installed automatically as a CocoaPod
 dependency from the public CocoaPods trunk (`UseSenseSDK`, pinned to
-`~> 4.14.0`). Add required permissions to your `Info.plist`:
+`~> 4.14.1`). Add required permissions to your `Info.plist`:
 
 ```xml
 <key>NSCameraUsageDescription</key>
@@ -75,7 +75,7 @@ Add required permissions to your `AndroidManifest.xml`:
 ```
 
 **One Gradle setting is required** (auto-linking handles module
-registration). The native SDK requires Android API 28 — set it in your
+registration). The native SDK requires Android API 28: set it in your
 app's `android/build.gradle`:
 
 ```groovy
@@ -92,12 +92,12 @@ Without it, a release build fails at manifest merge
 The plugin works on **both** the New Architecture and the Old (Bridge)
 Architecture, with no configuration difference. It's a native bridge
 module, and RN's built-in legacy interop layer (on by default since RN
-0.74) runs it transparently under the New Architecture — you don't need
+0.74) runs it transparently under the New Architecture: you don't need
 to enable or change anything.
 
 CI verifies both paths on every change: one job builds a release APK on
 the Old Architecture, another builds a fresh RN app with the New
-Architecture enabled. (It is not a native TurboModule — that migration
+Architecture enabled. (It is not a native TurboModule: that migration
 isn't required for New-Arch support and isn't currently planned.)
 
 ## Quick start
@@ -134,6 +134,61 @@ try {
 // 4. Your backend receives the full signed verdict via webhook.
 //    That's where you read pillar scores and make access decisions.
 ```
+
+## Run a Flow
+
+Flows are the main integration path: you build the steps (consent, forms, documents, face capture, registry checks, review) in the dashboard, and the native runner shows them. No API key ships in the app, and `initialize` is not needed.
+
+**1. Your server starts the run** with its secret key and returns `flowRun.id` and `sdkToken` to the app:
+
+```bash
+curl -X POST https://api.usesense.ai/v1/flow-runs \
+  -H "x-api-key: sk_..." -H "Content-Type: application/json" \
+  -d '{"flowId":"YOUR_FLOW_ID","subject":{"externalRef":"user_123"},"mint_sdk_token":true}'
+# 201 { "flowRun": { "id": "...", "state": "pending", ... }, "stepRuns": [], "sdkToken": "...", "expiresAt": "..." }
+```
+
+The token is bound to that run and expires after 30 minutes (`sdk_token_ttl_seconds`, 60 s to 24 h).
+
+**2. The app runs it:**
+
+```typescript
+import { UseSenseFlows, FlowError } from 'react-native-usesense';
+
+try {
+  const result = await UseSenseFlows.runFlow({ flowRunId, sdkToken });
+  // result.flowRunId, result.state, result.outcome ('APPROVE' | 'REJECT' | 'MANUAL_REVIEW' | null)
+  if (result.state === 'awaiting_review') showUnderReview();
+  else showDone();
+} catch (e) {
+  if (e instanceof FlowError) console.error('Flow error', e.code, e.message);
+}
+```
+
+`runFlow` presents the native full-screen runner (iOS `UseSenseFlows.run`, Android `UseSenseFlows.run`) and resolves once. Other options: `apiBaseUrl`, `appearance` and `copy` (see [White-labeling](#white-labeling-appearance--copy)).
+
+**3. The result.** `FlowRunResult.state` is one of:
+
+| `state` | Meaning |
+|---------|---------|
+| `completed` | The run finished; `outcome` holds the Flow's outcome. |
+| `awaiting_review` | Held for a human reviewer. The person sees the "Under review" screen. The final decision arrives later by webhook (`flow_run.completed`). |
+| `cancelled` | The person left the run. |
+| `errored` | A step failed and the Flow ended in error. |
+| `abandoned` | The run timed out without the person finishing. |
+
+The client result is for your UI only. Decide on your server, from the `flow_run.completed` webhook or `GET /v1/flow-runs/:id` with your API key.
+
+**4. Errors.** `runFlow` rejects with a `FlowError` whose `code` is one of:
+
+| `code` | What to do |
+|--------|------------|
+| `token_expired`, `token_invalid` | Start a new run on your server and call `runFlow` again. |
+| `network_unavailable` | Let the person retry when they are back online. |
+| `permission_denied` | Camera access was refused; explain how to allow it. |
+| `provider_unavailable` | A verification provider is down; retry later. |
+| `unsupported_action` | The Flow uses a step this SDK version cannot show; upgrade the package. |
+| `cancelled`, `invalid_input`, `unknown` | `invalid_input` is shown inline by the runner; treat the rest as a failed attempt. Capture, upload and run timeouts from the native runner arrive as `unknown`. |
 
 ## White-labeling (Appearance & Copy)
 
@@ -287,7 +342,7 @@ if (result.isApproved) {
 Returning user claims an existing identity. The system performs a
 1:1 verification against the enrolled template, plus a 1:N
 cross-identity scan to detect identity swaps. The `identityId` must
-be an identity that was previously enrolled — your backend persisted
+be an identity that was previously enrolled: your backend persisted
 it when the enrollment webhook fired.
 
 ```typescript
@@ -639,7 +694,7 @@ yourself.
    signed webhook at the endpoint you configured in the Watchtower
    dashboard.
 3. Always verify the webhook signature before acting on it. Reject
-   any webhook whose signature doesn't match — an attacker with the
+   any webhook whose signature doesn't match: an attacker with the
    endpoint URL but not the signing secret would otherwise be able
    to forge approved verdicts.
 4. Use the webhook's pillar scores (`channelTrustScore`,
@@ -728,7 +783,8 @@ Proprietary. See [LICENSE](LICENSE).
 
 ## Support
 
-- Documentation: https://watchtower.usesense.ai/developer-docs
+- Guides: https://docs.usesense.ai
+- API reference: https://docs.usesense.ai/api
 - Dashboard: https://watchtower.usesense.ai
 - Email: support@usesense.ai
 - Issues: https://github.com/qudusadeyemi/react-native-usesense/issues

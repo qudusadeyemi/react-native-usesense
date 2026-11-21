@@ -64,6 +64,6 @@ Pod::Spec.new do |s|
   # 4.13.1 is the floor: device checks send the device telemetry (cpu_abi,
   # RAM, storage) the server scores; 4.13.0 scored them 0 on every iOS check.
   # 4.14.0 is the floor: SessionType.liveness (liveness-only sessions).
-  # `~> 4.14.0` means >= 4.14.0, < 4.15.0.
-  s.dependency "UseSenseSDK", "~> 4.14.0"
+  # 4.14.1: one Flow end screen. `~> 4.14.1` means >= 4.14.1, < 4.15.0.
+  s.dependency "UseSenseSDK", "~> 4.14.1"
 end
